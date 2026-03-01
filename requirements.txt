@@ -5,3 +5,4 @@ psycopg2==2.9.11
 pydantic==2.12.5
 pydantic_core==2.41.5
 python-dotenv==1.2.1
+fastapi==0.134.0
