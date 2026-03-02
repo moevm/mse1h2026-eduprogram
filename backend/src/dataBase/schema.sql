@@ -1,10 +1,10 @@
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     login VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(256) NOT NULL
 );
 
-CREATE TABLE user_folders (
+CREATE TABLE IF NOT EXISTS user_folders (
     id SERIAL PRIMARY KEY,
     login VARCHAR(50) NOT NULL,
     folder_name VARCHAR(255) NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE user_folders (
         ON DELETE CASCADE
 );
 
-CREATE TABLE uploaded_files (
+CREATE TABLE IF NOT EXISTS uploaded_files (
     id SERIAL PRIMARY KEY,
     login VARCHAR(50) NOT NULL,
     folder_name VARCHAR(255) NOT NULL,
