@@ -22,7 +22,16 @@ END
 EOF
 
 psql postgres <<EOF
-CREATE DATABASE $DB_NAME OWNER $DB_USER;
+DO
+\$do\$
+BEGIN
+   IF NOT EXISTS (
+      SELECT FROM pg_database WHERE datname = '$DB_NAME'
+   ) THEN
+      CREATE DATABASE $DB_NAME OWNER $DB_USER;
+   END IF;
+END
+\$do\$;
 EOF
 
 PGPASSWORD=$DB_PASSWORD psql \
