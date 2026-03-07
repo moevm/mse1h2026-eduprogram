@@ -4,11 +4,8 @@ from src.dataBase.dependencies import get_db
 from src.dataBase.dataBaseStructs import User, WorkProgram
 from src.dataBase.dataBaseController import DataBaseController
 import os
-from dotenv import load_dotenv
 from pathlib import Path
 import json
-
-load_dotenv()
 
 router = APIRouter()
 
