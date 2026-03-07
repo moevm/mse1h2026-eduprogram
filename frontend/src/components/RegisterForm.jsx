@@ -24,7 +24,7 @@ function RegisterForm() {
   const validateField = (name, value) => {
     switch (name) {
       case 'login':
-        if (!value) return 'Логин обязателен';
+        if (!value) return 'Email обязателен';
         if (value.length < 3) return 'Минимум 3 символа';
         return '';
       case 'password':
@@ -136,7 +136,7 @@ function RegisterForm() {
             icon={getIcon('login')}
           />
           {touched.login && errors.login && (
-            <div className="error" style={{ fontSize: '12px', marginTop: '-5px', marginBottom: '5px' }}>
+            <div className="field-error">
               {errors.login}
             </div>
           )}
@@ -152,7 +152,7 @@ function RegisterForm() {
             icon={getIcon('password')}
           />
           {touched.password && errors.password && (
-            <div className="error" style={{ fontSize: '12px', marginTop: '-5px', marginBottom: '5px' }}>
+            <div className="field-error">
               {errors.password}
             </div>
           )}

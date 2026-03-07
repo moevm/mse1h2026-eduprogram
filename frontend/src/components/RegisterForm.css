@@ -78,3 +78,12 @@
 .input-wrapper:last-of-type {
   margin-bottom: 15px;
 }
+
+.field-error {
+  color: #ff0000;
+  font-size: 12px;
+  margin-top: -5px;
+  margin-bottom: 5px;
+  text-align: left;
+  font-family: 'Inter', sans-serif;
+}
