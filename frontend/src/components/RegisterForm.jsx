@@ -103,7 +103,7 @@ function RegisterForm() {
   const getIcon = (name) => {
     switch(name) {
       case 'login': return 'mail';
-      case 'password': 
+      case 'password': return 'settings';
       default: return undefined;
     }
   };
