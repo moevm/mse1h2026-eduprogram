@@ -1,7 +1,6 @@
 import psycopg2.pool
 import hashlib
 
-
 class DataBaseController:
     """Контроллер базы данных по хранению пользователей и файлов университетов"""
     def __init__(self, dbName: str, host: str, port: str, user: str, password: str,
@@ -16,7 +15,13 @@ class DataBaseController:
         self.__poolConnections = None
 
         self.__tableUsers = "users"
-        self.__tableUsersFields = ["hash_login_password"]
+        self.__tableUsersFields = ["login", "password_hash"]
+
+        self.__tableUserFolder = "user_folders"
+        self.__tableUserFolderFields = ["idUser", "folder_name"]
+
+        self.__tableWorkPrograms = "uploaded_files"
+        self.__tableWorkProgramsFields = ["idUser", "folder_name", "file_path"]
 
     def openConnection(self) -> bool:
         """Метод создания пулла соединений"""
@@ -49,9 +54,7 @@ class DataBaseController:
         hashByLoginPwd = hashlib.sha256(combinedStr.encode('utf-8'))
         return hashByLoginPwd.hexdigest()
 
-    def addUser(self, login: str, password: str) -> bool:
-        """Метода добавления пользователя в базу данных.
-        Возвращает true, если пользователь был успешно добавлен"""
+    def __insertOperation(self, request: str, args: tuple) -> bool:
         if not self.isConnected():
             return False
 
@@ -64,9 +67,7 @@ class DataBaseController:
             cursor = connection.cursor()
             if not cursor:
                 return False
-            userHash = self.__getHashByLoginPwd(login, password)
-            cursor.execute(f"INSERT INTO {self.__tableUsers} ({", ".join(self.__tableUsersFields)}) VALUES (%s);",
-                           (userHash,))
+            cursor.execute(request, args)
             connection.commit()
             return True
         except Exception as e:
@@ -78,33 +79,78 @@ class DataBaseController:
             cursor.close()
             self.__poolConnections.putconn(connection)
 
-    def findUser(self, login: str, password: str) -> dict:
-        """Метод нахождения пользователя из БД.
-        Возвращает словарь {id: integer}"""
-        """TODO: Есть небольшое дублирование. В дальнейшем можно подумать, как исправить"""
+    def __findOperation(self, request: str, args: tuple) -> list:
         if not self.isConnected():
-            return {}
+            return []
 
         connection = None
         cursor = None
         try:
             connection = self.__poolConnections.getconn()
             if not connection:
-                return {}
+                return []
             cursor = connection.cursor()
             if not cursor:
-                return {}
-            userHash = self.__getHashByLoginPwd(login, password)
-            cursor.execute(f"SELECT * from {self.__tableUsers} WHERE hash_login_password = %s", (userHash,))
-            resultSelect = cursor.fetchone()
-            if resultSelect:
-                return {"id": resultSelect[0]}
-            return {}
+                return []
+            cursor.execute(request, args)
+            return cursor.fetchall()
         except Exception as e:
             print("Error:", e)
             if connection:
                 connection.rollback()
-            return {}
+            return []
         finally:
             cursor.close()
             self.__poolConnections.putconn(connection)
+
+    def addWorkProgram(self, idUser: int, folderName: str, filePath: str) -> bool:
+        """Метода добавления рабочей программы в базу данных.
+        Возвращает true, если пользователь был успешно добавлен"""
+        request = f"INSERT INTO {self.__tableWorkPrograms} ({", ".join(self.__tableWorkProgramsFields)}) VALUES (%s, %s, %s);"
+        args = (idUser, folderName, filePath)
+        return self.__insertOperation(request, args)
+
+    def addUserFolder(self, idUser: int, filePath: str) -> bool:
+        """Метода добавления папки пользователя в базу данных.
+        Возвращает true, если пользователь был успешно добавлен"""
+        request = f"INSERT INTO {self.__tableUserFolder} ({", ".join(self.__tableUserFolderFields)}) VALUES (%s, %s);"
+        args = (idUser, filePath)
+        return self.__insertOperation(request, args)
+
+    def addUser(self, login: str, password: str) -> bool:
+        """Метода добавления пользователя в базу данных.
+        Возвращает true, если пользователь был успешно добавлен"""
+
+        userHash = self.__getHashByLoginPwd(login, password)
+        request = f"INSERT INTO {self.__tableUsers} ({", ".join(self.__tableUsersFields)}) VALUES (%s, %s);"
+        args = (login, userHash)
+        return self.__insertOperation(request, args)
+
+    def findUserByLoginPassword(self, login: str, password: str) -> dict:
+        """Метод нахождения пользователя по логину/паролю из БД.
+        Возвращает словарь {id: integer}"""
+
+        userHash = self.__getHashByLoginPwd(login, password)
+        request = f"SELECT * from {self.__tableUsers} WHERE password_hash = %s"
+        args = (userHash,)
+        resultSelect = self.__findOperation(request, args)
+        if not resultSelect:
+            return {}
+        user = resultSelect[0]
+        if user:
+            return {"id": user[0]}
+        return {}
+
+    def findUserById(self, idUser: int) -> dict:
+        """Метод нахождения пользователя по id из БД.
+        Возвращает словарь {id: integer, login: str}"""
+
+        request = f"SELECT * from {self.__tableUsers} WHERE id = %s"
+        args = (idUser,)
+        resultSelect = self.__findOperation(request, args)
+        if not resultSelect:
+            return {}
+        user = resultSelect[0]
+        if len(user) >= 2:
+            return {"id": user[0], "login": user[1]}
+        return {}
