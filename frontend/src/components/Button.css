@@ -1,0 +1,31 @@
+.custom-button {
+  width: 260px;
+  height: 43px;
+  border-radius: 15px;
+  padding: 12px 30px;
+  gap: 10px;
+  opacity: 1;
+  box-shadow: 0px 4px 10px 0px #00000040;
+  
+  /* Для позиционирования, если нужно */
+  position: absolute;
+  top: 346.09px;
+  left: 50px;
+  
+  border: none;
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-button:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0px 6px 12px 0px #00000050;
+}
