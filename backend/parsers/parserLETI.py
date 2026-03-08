@@ -228,23 +228,18 @@ class ParserLETI:
         """
         # Убираем ведущий номер в начале
         block = re.sub(r"^\s*\d+\s*", "", block)  # регулярка: пробелы, цифры, пробелы
-
         # Убираем слово "Тема" с номером
         # (?i) - игнорирование регистра, ^ - начало строки, \d+ - цифры, \.? - точка опционально
         block = re.sub(r"(?i)^тема\s*\d+\.?\s*", "", block).strip()
-
         # Найти первую точку с пробелом (конец названия темы)
         firstDotIdx = block.find('. ')
         if firstDotIdx == -1:
             # Точек нет, весь блок — название, содержимого нет
             return {block.strip(): []}
-
         # Название = всё до первой точки
         title = block[:firstDotIdx].strip()
-
         # Содержание = всё после первой точки, разбиваем по точкам
         contentText = block[firstDotIdx + 1:].strip()
-
         # Разбиваем по точкам с пробелом, убираем пустые
         sentences = [s.strip() for s in contentText.split('. ') if s.strip()]
 
@@ -394,6 +389,6 @@ class ParserLETI:
 
 
 if __name__ == "__main__":
-    
+
     parser = ParserLETI(os.path.join(os.path.expanduser("~/Desktop"), "СПбГЭТУ ЛЭТИ"))
     parser.start()
