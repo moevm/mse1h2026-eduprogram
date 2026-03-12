@@ -141,6 +141,22 @@ class DataBaseController:
             return {"id": user[0]}
         return {}
 
+    def findUserByLogin(self, login: str) -> dict:
+        """Метод нахождения пользователя только по логину из БД.
+        Возвращает словарь {id: integer}"""
+        request = f"SELECT * from {self.__tableUsers} WHERE login = %s"
+        args = (login,)
+        resultSelect = self.__findOperation(request, args)
+
+        if not resultSelect:
+            return {}
+
+        user = resultSelect[0]
+
+        if user:
+            return {"id": user[0]}
+        return {}
+
     def findUserById(self, idUser: int) -> dict:
         """Метод нахождения пользователя по id из БД.
         Возвращает словарь {id: integer, login: str}"""

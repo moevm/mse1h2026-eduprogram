@@ -52,6 +52,39 @@ def login(user: User, db: DataBaseController = Depends(get_db)):
             content={"responseMessage": "ok", "id": result["id"]}
     )
 
+@router.post("/registration")
+def registration(user: User, db: DataBaseController = Depends(get_db)):
+    """Метод обработки регистрации пользователя.
+    Возвращает код и ответ в формате:
+    {responseMessage: {сообщение от сервера}, id: {id пользователя в БД, если он найден}}"""
+    if not db.isConnected():
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"responseMessage": "DataBase connect error!"}
+        )
+
+    find_result = db.findUserByLogin(user.login)
+
+    if "id" in find_result:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"responseMessage": "This login is already in use!"}
+        )
+
+    add_result = db.addUser(user.login, user.password)
+
+    if add_result:
+        find_result = db.findUserByLogin(user.login)
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content={"responseMessage": "User was successfully registered!", "id": find_result["id"]}
+        )
+
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"responseMessage" : "Cannot register user due to server error!"}
+    )
+
 @router.post("/add-program")
 def addProgram(workProgram: WorkProgram, db: DataBaseController = Depends(get_db)):
     """Метод добавления учебной программы.
