@@ -54,8 +54,8 @@ const TreeNode = ({ node, onUpdate, level = 0 }) => {
           disabled={!node.children || node.children.length === 0}
         >
           {node.children && node.children.length > 0 
-            ? (isExpanded ? '▼' : '►') 
-            : '•'}
+            ? (isExpanded ? '-' : '+') 
+            : '.'}
         </button>
 
         <input
@@ -74,7 +74,7 @@ const TreeNode = ({ node, onUpdate, level = 0 }) => {
             onClick={handleAddChild}
             title={`Добавить ${childType}`}
           >
-            ➕
+            +
           </button>
         )}
 
@@ -83,7 +83,7 @@ const TreeNode = ({ node, onUpdate, level = 0 }) => {
           onClick={handleDelete}
           title="Удалить"
         >
-          🗑️
+          -
         </button>
       </div>
 

@@ -61,7 +61,7 @@ const TreeEditor = () => {
   return (
     <div className="tree-editor-container">
       <div className="header">
-        <h1>📚 Редактор учебного графа</h1>
+        <h1>Редактор учебного графа</h1>
         <p className="subtitle">Дисциплины → Темы → Подтемы (можно сворачивать)</p>
       </div>
 
