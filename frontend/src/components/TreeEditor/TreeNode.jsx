@@ -1,12 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { getChildType, getRussianType, getPlaceholder, generateId } from './utils';
 import './TreeEditor.css';
 
-const TreeNode = ({ node, onUpdate, level = 0 }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+const TreeNode = ({ node, onUpdate, onAddSibling, level = 0 }) => {
+
+  const [isExpanded, setIsExpanded] = useState(true); // открыт/закрыт список дочерних элементов
+  const [prevInput, setPrevInput] = useState(''); // значение поля ввода предшествующей дисциплины
+
+  const inputRef = useRef(null); // ссылка на поле ввода для автофокуса
+
   const childType = getChildType(node.type);
   const canAddChild = childType !== null;
 
+  // Автофокус на новом пустом элементе
+  useEffect(() => {
+    if (node.name === '' && inputRef.current) {
+      setTimeout(() => {
+        inputRef.current.focus();
+      }, 0);
+    }
+  }, [node.id]); // срабатывает при появлении нового узла
+
+  // Обработка нажатия Enter - добавляет соседний элемент
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (onAddSibling) {
+        onAddSibling(node.type);
+      }
+    }
+  };
+
+  // Обновление названия элемента
   const handleNameChange = (e) => {
     onUpdate({
       ...node,
@@ -14,6 +39,7 @@ const TreeNode = ({ node, onUpdate, level = 0 }) => {
     });
   };
 
+  // Добавление дочернего элемента (темы или подтемы)
   const handleAddChild = () => {
     if (!childType) return;
 
@@ -30,85 +56,189 @@ const TreeNode = ({ node, onUpdate, level = 0 }) => {
     });
   };
 
-  const handleChildUpdate = (childIndex, updatedChild) => {
-    const newChildren = [...node.children];
-    newChildren[childIndex] = updatedChild;
+  // Добавление предшествующей дисциплины (только для дисциплин)
+  const handleAddPrev = () => {
+    if (!prevInput.trim()) return;
+
+    const list = node.previousDisciplines || [];
+
     onUpdate({
       ...node,
-      children: newChildren
+      previousDisciplines: [...list, prevInput]
+    });
+    setPrevInput(''); // очищаем поле после добавления
+  };
+
+  // Обновление конкретного дочернего элемента
+  const handleChildUpdate = (childIndex, updatedChild) => {
+    const copy = [...node.children];
+    copy[childIndex] = updatedChild;
+
+    onUpdate({
+      ...node,
+      children: copy
     });
   };
 
+  // Удаление текущего узла с подтверждением
   const handleDelete = () => {
     if (window.confirm(`Удалить ${getRussianType(node.type)} "${node.name || 'без названия'}"?`)) {
-      onUpdate(null);
+      onUpdate(null); // null сигнализирует об удалении
     }
   };
 
   return (
-    <div className="tree-node" style={{ marginLeft: level * 24 }}>
+    <div
+      className="tree-node"
+      style={{ marginLeft: level * 16 }} // отступ зависит от уровня вложенности
+    >
+
       <div className="node-content">
+
+        {/* Кнопка свернуть/развернуть */}
         <button
           className="toggle-btn"
           onClick={() => setIsExpanded(!isExpanded)}
           disabled={!node.children || node.children.length === 0}
         >
-          {node.children && node.children.length > 0 
-            ? (isExpanded ? '-' : '+') 
-            : '.'}
+          {node.children && node.children.length > 0
+            ? (isExpanded ? '-' : '+') : '.'} {/* точка означает "нет детей" */}
         </button>
 
+        {/* Поле ввода названия */}
         <input
-          type="text"
+          ref={inputRef}
           className="node-input"
+          type="text"
           value={node.name}
           onChange={handleNameChange}
+          onKeyDown={handleKeyDown}
           placeholder={getPlaceholder(node.type)}
         />
 
-        <span className="type-badge">{getRussianType(node.type)}</span>
+        {/* Бейдж с типом элемента на русском */}
+        <span className="type-badge">
+          {getRussianType(node.type)}
+        </span>
 
-        {canAddChild && (
+        {/* Кнопка добавления ребенка (темы/подтемы) */}
+        {canAddChild &&
           <button
             className="action-btn add-btn"
-            onClick={handleAddChild}
-            title={`Добавить ${childType}`}
-          >
+            onClick={handleAddChild}>
             +
           </button>
-        )}
+        }
 
+        {/* Кнопка удаления */}
         <button
           className="action-btn delete-btn"
           onClick={handleDelete}
-          title="Удалить"
         >
-          -
+          X
         </button>
+
       </div>
 
+      {/* Секция предшествующих дисциплин (только для дисциплин) */}
+      {node.type === 'discipline' && (
+        <div className="prev-disciplines">
+
+          {/* Поле ввода новой предшествующей дисциплины */}
+          <div className="prev-input">
+            <input
+              type="text"
+              placeholder="Предшествующая дисциплина"
+              value={prevInput}
+              onChange={(e) => setPrevInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddPrev();
+                }
+              }}
+            />
+            <button onClick={handleAddPrev}>+</button>
+          </div>
+
+          {/* Список добавленных предшествующих дисциплин */}
+          <ul className="prev-list">
+            {(node.previousDisciplines || []).map((p, i) => (
+              <li key={i} className="prev-item">
+                <span>{p}</span>
+                <button
+                  className="remove-prev"
+                  onClick={() => {
+                    const updated = node.previousDisciplines.filter(
+                      (_, index) => index !== i
+                    );
+                    onUpdate({
+                      ...node,
+                      previousDisciplines: updated
+                    });
+                  }}>
+                  X
+                </button>
+              </li>
+            ))
+            }
+          </ul>
+
+        </div>
+      )
+      }
+
+      {/* Дочерние элементы (темы/подтемы) - отображаются если развернуто */}
       {isExpanded && node.children && node.children.length > 0 && (
         <div className="children-container">
           {node.children.map((child, index) => (
             <TreeNode
               key={child.id}
               node={child}
+              level={level + 1}
+
+              // Добавление соседа после текущего элемента
+              onAddSibling={(type) => {
+                const newNode = {
+                  id: generateId(),
+                  name: '',
+                  type,
+                  children: []
+                };
+
+                const updated = [
+                  ...node.children.slice(0, index + 1),
+                  newNode,
+                  ...node.children.slice(index + 1)
+                ];
+
+                onUpdate({
+                  ...node,
+                  children: updated
+                });
+              }}
+
+              // Обновление или удаление дочернего элемента
               onUpdate={(updatedChild) => {
                 if (updatedChild === null) {
-                  const newChildren = node.children.filter((_, i) => i !== index);
+                  // Удаляем элемент
+                  const filtered = node.children.filter((_, i) => i !== index);
                   onUpdate({
                     ...node,
-                    children: newChildren
+                    children: filtered
                   });
                 } else {
+                  // Обновляем существующий
                   handleChildUpdate(index, updatedChild);
                 }
-              }}
-              level={level + 1}
+              }
+            }
             />
-          ))}
+          ))
+          }
         </div>
       )}
+
     </div>
   );
 };
