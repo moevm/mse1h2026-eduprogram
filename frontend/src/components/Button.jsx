@@ -9,7 +9,8 @@ function Button({
   absolute = false,
   width,
   height,
-  className = ''
+  className = '',
+  disabled = false
 }) {
   const buttonStyle = {
     backgroundColor: color,
@@ -26,6 +27,7 @@ function Button({
       style={buttonStyle}
       onClick={onClick}
       type={type}
+      disabled={disabled}
     >
       {children}
     </button>
