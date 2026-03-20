@@ -7,7 +7,8 @@ const MainPage = () => {
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const domain = process.env.REACT_APP_API_URL_GET_PROGRAMMS;
+//   const domain = process.env.REACT_APP_API_URL_GET_PROGRAMMS;
+  const domain = 'localhost:8000';
 
   const fetchPrograms = async () => {
     setLoading(true);
@@ -18,23 +19,23 @@ const MainPage = () => {
       setIsOpen(true);
     } catch (error) {
       console.error('Ошибка:', error);
-      // Для теста
-      setPrograms(["program 1", "program2"]);
-      setIsOpen(true);
+      alert('Не удалось получить программы');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleShowGraph = (program) => {
-    console.log('Показать граф для:', program);
-    // логика показа графа
+  const handleShowGraph = async (program) => {
+    const response = await fetch(`http://${domain}/show-graph?name=${program}`);
+    if (response.status == 200){
+      console.log('Рисуется граф', program);
+    }
   };
 
   return (
     <>
-        <Button 
-          className="custom-button"
+        <Button
+          className="custom-button-margin"
           type="button"
           color="#000000"
           onClick={fetchPrograms}
@@ -53,12 +54,7 @@ const MainPage = () => {
         onShowGraph={handleShowGraph}
       />
 
-      <style>{`
-        .custom-button {
-            margin-top: 90px;
-            margin-left: 10px;
-        }
-      `}</style>
+
     </>
   );
 };

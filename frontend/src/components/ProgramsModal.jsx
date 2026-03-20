@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import './ProgramsModal.css';
+import Button from '../components/Button';
 
 const ProgramsModal = ({ isOpen, onClose, programs, onShowGraph }) => {
   if (!isOpen) return null;
@@ -7,24 +8,40 @@ const ProgramsModal = ({ isOpen, onClose, programs, onShowGraph }) => {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h3>Образовательные программы</h3>
+        <h3 className="title-window">Образовательные программы</h3>
         
         {programs.length === 0 ? (
-          <p>Нет данных</p>
+          <p className="text-program">Нет данных</p>
         ) : (
           <ul>
             {programs.map((program, idx) => (
               <li key={idx}>
-                <span>{program}</span>
-                <button onClick={() => onShowGraph(program)} name={program}>
-                  Показать граф программы
-                </button>
+                <span className="text-program">{program}</span>
+                <Button
+                type="button"
+                color="#000000"
+                onClick={() => onShowGraph(program)}
+                width="160px"
+                height="43px"
+                absolute={false}
+                >
+                  <p className="text-program">Показать граф программы</p>
+                </Button>
               </li>
             ))}
           </ul>
         )}
         
-        <button className="close-btn" onClick={onClose}>Закрыть</button>
+        <Button
+        className="close-button"
+        type="button"
+        color="#2058c7"
+        onClick={onClose}
+        width="260px"
+        height="43px"
+        >
+          <p className="text-program">Закрыть</p>
+        </Button>
       </div>
 
     </div>

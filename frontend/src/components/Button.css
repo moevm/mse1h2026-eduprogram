@@ -23,6 +23,11 @@
   justify-content: center;
 }
 
+.custom-button-margin {
+    margin-top: 90px;
+    margin-left: 10px;
+}
+
 .custom-button:hover {
   opacity: 0.9;
   transform: translateY(-2px);
