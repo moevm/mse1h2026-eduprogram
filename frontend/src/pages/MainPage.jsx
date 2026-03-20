@@ -7,8 +7,7 @@ const MainPage = () => {
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(false);
 
-//   const domain = process.env.REACT_APP_API_URL_GET_PROGRAMMS;
-  const domain = 'localhost:8000';
+  const domain = process.env.REACT_APP_API_URL_GET_PROGRAMMS;
 
   const fetchPrograms = async () => {
     setLoading(true);
