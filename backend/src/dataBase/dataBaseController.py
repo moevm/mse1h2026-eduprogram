@@ -120,7 +120,7 @@ class DataBaseController:
         result = self.__findOperation(request, args)
         programs = []
         if result:
-            programs = [row[self.IDX_FILE_PATH] for row in result]
+            programs = [row[2] for row in result]
 
         return programs
 
