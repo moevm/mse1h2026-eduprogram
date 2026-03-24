@@ -110,6 +110,21 @@ class DataBaseController:
         args = (idUser, folderName, filePath)
         return self.__insertOperation(request, args)
 
+    def getWorkPrograms(self, id: int) -> list:
+        """
+        Метод возвращает загруженные пользователем рабочие планы.
+        """
+        request = f"SELECT * FROM {self.__tableWorkPrograms} WHERE idUser = %s"
+        args = (id)
+
+        result = self.__findOperation(request, args)
+        programs = []
+        if result:
+            programs = [row[self.IDX_FILE_PATH] for row in result]
+
+        return programs
+
+
     def addUserFolder(self, idUser: int, filePath: str) -> bool:
         """Метода добавления папки пользователя в базу данных.
         Возвращает true, если пользователь был успешно добавлен"""
