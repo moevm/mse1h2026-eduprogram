@@ -4,7 +4,6 @@ import "./GraphAside.css"
 const GraphAside = () => {
     return (
         <aside className="graph-aside">
-            WIP
         </aside>
     );
 };

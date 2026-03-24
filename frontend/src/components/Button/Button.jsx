@@ -27,7 +27,7 @@ function Button({
       onClick={onClick}
       type={type}
     >
-      {children}
+      <span>{children}</span>
     </button>
   );
 }

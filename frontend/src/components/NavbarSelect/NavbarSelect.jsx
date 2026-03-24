@@ -12,7 +12,7 @@ export default function NavbarSelect({ options = [] }) {
                     className="segmented-slider"
                     initial={false}
                     animate={{
-                        width: `${100 / options.length}%`,
+                        width: `${(100 / options.length)}%`,
                         left: `${(100 / options.length) * activeIndex}%`,
                     }}
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}

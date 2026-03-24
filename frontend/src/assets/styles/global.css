@@ -7,6 +7,10 @@
 body {
     height: 100vh;
     margin: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 25px;
 }
 
 h1,

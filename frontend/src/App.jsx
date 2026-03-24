@@ -1,8 +1,8 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import WorkProgramPage from './pages/WorkProgramPage';
+import LoginPage from './pages/LoginPage/LoginPage';
+import RegisterPage from './pages/RegisterPage/RegisterPage';
+import WorkProgramPage from './pages/WorkProgramPage/WorkProgramPage';
 import GraphPage from "./pages/GraphPage/GraphPage";
 import "./assets/styles/global.css"
 

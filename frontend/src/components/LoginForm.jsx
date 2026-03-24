@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiUser } from 'react-icons/fi';
-import Button from './Button';
+import Button from './Button/Button';
 import Input from './Input';
 import Card from './Card';
 import './LoginForm.css';

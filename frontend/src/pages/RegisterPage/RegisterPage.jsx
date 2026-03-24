@@ -1,6 +1,7 @@
 import React from 'react';
-import Card from '../components/Card';
-import Navbar from "../components/Navbar";
+import Card from '../../components/Card';
+import Navbar from "../../components/Navbar/Navbar";
+import "./RegisterPage.css"
 
 function RegisterPage() {
   return (

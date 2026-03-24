@@ -1,7 +1,7 @@
 import React from 'react';
-import TreeEditor from '../components/TreeEditor';
+import TreeEditor from '../../components/TreeEditor';
 import './WorkProgramPage.css';
-import Navbar from "../components/Navbar";
+import Navbar from "../../components/Navbar/Navbar";
 
 const WorkProgramPage = () => {
   return (

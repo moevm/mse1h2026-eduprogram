@@ -5,8 +5,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-block: 30px;
-    box-sizing: border-box;
+    padding-inline: 30px;
 }
 
 .logo {
@@ -21,15 +20,6 @@
     align-items: center;
 }
 
-.navbar-buttons .custom-button {
+.custom-button {
     margin: 0;
-    padding: 12px 30px;
-    font-size: 14px;
-    font-weight: 500;
-    border-radius: 15px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    white-space: nowrap;
-    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
 }
