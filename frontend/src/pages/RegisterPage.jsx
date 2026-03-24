@@ -1,16 +1,10 @@
 import React from 'react';
-import Card from '../components/Card';
+import RegisterForm from '../components/RegisterForm';
 
 function RegisterPage() {
   return (
-    <div className="login-container">
-      <Card>
-        <h2>Регистрация</h2>
-        <p style={{ textAlign: 'center', color: '#666' }}>
-          Страница регистрации<br />
-          (в разработке)
-        </p>
-      </Card>
+    <div className="register-container">
+      <RegisterForm />
     </div>
   );
 }
