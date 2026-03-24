@@ -123,3 +123,18 @@ def addProgram(workProgram: WorkProgram, db: DataBaseController = Depends(get_db
         status_code=status.HTTP_200_OK,
         content={"responseMessage": "ok"}
     )
+
+@router.get("/get-programs")
+def getPrograms(userId : int, db: DataBaseController = Depends(get_db)):
+    if not db.isConnected():
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"responseMessage": "DataBase connect error!"}
+        )
+
+    programs = db.getWorkPrograms(userId)
+    
+    return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={ "programs": programs }
+        )
