@@ -115,7 +115,7 @@ class DataBaseController:
         Метод возвращает загруженные пользователем рабочие планы.
         """
         request = f"SELECT * FROM {self.__tableWorkPrograms} WHERE idUser = %s"
-        args = (id)
+        args = (id,)
 
         result = self.__findOperation(request, args)
         programs = []

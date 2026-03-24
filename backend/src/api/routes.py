@@ -131,6 +131,7 @@ def getPrograms(userId : int, db: DataBaseController = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"responseMessage": "DataBase connect error!"}
         )
+        
     programs = db.getPrograms(userId)
     
     return JSONResponse(
