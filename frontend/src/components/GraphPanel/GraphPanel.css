@@ -1,0 +1,5 @@
+.graph-panel {
+    height: calc(100vh - 70px);
+    display: grid;
+    grid-template-columns: 340px 1fr;
+}

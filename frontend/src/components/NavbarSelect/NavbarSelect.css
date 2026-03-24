@@ -1,0 +1,46 @@
+.segmented-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.segmented-wrapper {
+    position: relative;
+    display: flex;
+    width: 100%;
+    max-width: 600px;
+    background: #e5e5e5;
+    border-radius: 40px;
+    padding: 6px;
+}
+
+.segmented-slider {
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 0;
+    background: black;
+    border-radius: 40px;
+    z-index: 0;
+}
+
+.segmented-button {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 14px 0;
+    font-size: 20px;
+    color: #888;
+    cursor: pointer;
+    z-index: 1;
+    border-radius: 40px;
+    transition: color 0.2s ease;
+}
+
+.segmented-button.active {
+    color: white;
+}
+
+.segmented-button:not(.active):hover {
+    color: #555;
+}

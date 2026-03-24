@@ -1,11 +1,15 @@
 import React from 'react';
 import LoginForm from '../components/LoginForm';
+import Navbar from "../components/Navbar";
 
 function LoginPage() {
   return (
-    <div className="login-page">
-      <LoginForm />
-    </div>
+    <>
+        <Navbar/>
+        <div className="login-page">
+            <LoginForm />
+        </div>
+    </>
   );
 }
 
