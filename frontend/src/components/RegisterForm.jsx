@@ -25,7 +25,7 @@ function RegisterForm() {
     const result = await register(email, password);
     
     if (result.success) {
-      document.body.innerHTML = '<div></div>';
+      navigate('/graph');
     } else {
       setError(result.error);
     }
