@@ -80,8 +80,10 @@ class DataBaseController:
                 connection.rollback()
             return False
         finally:
-            cursor.close()
-            self.__poolConnections.putconn(connection)
+            if cursor:
+                cursor.close()
+            if connection:
+                self.__poolConnections.putconn(connection)
 
     def __findOperation(self, request: str, args: tuple) -> list:
         if not self.isConnected():
@@ -104,15 +106,37 @@ class DataBaseController:
                 connection.rollback()
             return []
         finally:
-            cursor.close()
-            self.__poolConnections.putconn(connection)
+            if cursor:
+                cursor.close()
+            if connection:
+                self.__poolConnections.putconn(connection)
 
     def addWorkProgram(self, idUser: int, folderName: str, filePath: str) -> bool:
         """Метода добавления рабочей программы в базу данных.
         Возвращает true, если пользователь был успешно добавлен"""
-        request = f"INSERT INTO {self.__tableWorkPrograms} ({", ".join(self.__tableWorkProgramsFields)}) VALUES (%s, %s, %s);"
+        fields = ", ".join(self.__tableWorkProgramsFields)
+        request = f"INSERT INTO {self.__tableWorkPrograms} ({fields}) VALUES (%s, %s, %s);"
         args = (idUser, folderName, filePath)
         return self.__insertOperation(request, args)
+
+    def workProgramExists(self, idUser: int, folderName: str, filePath: str) -> bool:
+        """Проверка существования записи о рабочей программе."""
+        request = f"SELECT 1 FROM {self.__tableWorkPrograms} WHERE idUser = %s AND folder_name = %s AND file_path = %s LIMIT 1"
+        args = (idUser, folderName, filePath)
+        result = self.__findOperation(request, args)
+        return len(result) > 0
+
+    def updateWorkProgramPath(self, idUser: int, folderName: str, filePath: str) -> bool:
+        """Обновляет запись о файле программы по идентификатору пользователя и папке."""
+        request = f"UPDATE {self.__tableWorkPrograms} SET file_path = %s WHERE idUser = %s AND folder_name = %s"
+        args = (filePath, idUser, folderName)
+        return self.__insertOperation(request, args)
+
+    def upsertWorkProgram(self, idUser: int, folderName: str, filePath: str) -> bool:
+        """Вставка или обновление записи о рабочей программе без изменения схемы БД."""
+        if self.workProgramExists(idUser, folderName, filePath):
+            return self.updateWorkProgramPath(idUser, folderName, filePath)
+        return self.addWorkProgram(idUser, folderName, filePath)
 
     def getWorkPrograms(self, idUser: int) -> list:
         """
@@ -159,7 +183,8 @@ class DataBaseController:
     def addUserFolder(self, idUser: int, filePath: str) -> bool:
         """Метода добавления папки пользователя в базу данных.
         Возвращает true, если пользователь был успешно добавлен"""
-        request = f"INSERT INTO {self.__tableUserFolder} ({", ".join(self.__tableUserFolderFields)}) VALUES (%s, %s);"
+        fields = ", ".join(self.__tableUserFolderFields)
+        request = f"INSERT INTO {self.__tableUserFolder} ({fields}) VALUES (%s, %s);"
         args = (idUser, filePath)
         return self.__insertOperation(request, args)
 
@@ -168,7 +193,8 @@ class DataBaseController:
         Возвращает true, если пользователь был успешно добавлен"""
 
         userHash = self.__getHashByLoginPwd(login, password)
-        request = f"INSERT INTO {self.__tableUsers} ({", ".join(self.__tableUsersFields)}) VALUES (%s, %s);"
+        fields = ", ".join(self.__tableUsersFields)
+        request = f"INSERT INTO {self.__tableUsers} ({fields}) VALUES (%s, %s);"
         args = (login, userHash)
         return self.__insertOperation(request, args)
 
