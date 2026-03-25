@@ -3,9 +3,11 @@ from fastapi.responses import JSONResponse
 from src.dataBase.dependencies import get_db
 from src.dataBase.dataBaseStructs import User, WorkProgram
 from src.dataBase.dataBaseController import DataBaseController
+from src.api.translator import translate_work_program_values
 import os
 from pathlib import Path
 import json
+import tempfile
 
 router = APIRouter()
 
@@ -26,8 +28,13 @@ def uploadFileWorkProgram(pathWorkProgram: Path, workProgram: WorkProgram) -> tu
     }
     if pathWorkProgram.exists():
         isExistWorkProgramPath = True
-    with open(pathWorkProgram, 'w', encoding="utf-8") as fileWorkProgramJson:
-        json.dump(programWorkDictionary, fileWorkProgramJson, indent=4, ensure_ascii=False)
+
+    # Атомарная запись через временный файл
+    with tempfile.NamedTemporaryFile('w', encoding='utf-8', delete=False, dir=str(pathWorkProgram.parent), suffix='.tmp') as temp_file:
+        json.dump(programWorkDictionary, temp_file, indent=4, ensure_ascii=False)
+        temp_path = Path(temp_file.name)
+
+    os.replace(temp_path, pathWorkProgram)
 
     return isExistDirectionPath, isExistWorkProgramPath
 
@@ -101,27 +108,45 @@ def addProgram(workProgram: WorkProgram, db: DataBaseController = Depends(get_db
             status_code=status.HTTP_401_UNAUTHORIZED,
             content={"responseMessage": "Not find current user!"}
         )
+
+    try:
+        translated_program, translation_stats = translate_work_program_values(workProgram)
+    except Exception as error:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "responseMessage": "Translation service unavailable",
+                "error": str(error)
+            }
+        )
+
     pathStorage = Path(os.getenv('LOCAL_PATH_TO_STORAGE'))
     pathWorkProgram = (Path(workProgram.nameUniversity) / workProgram.nameDirection /
                        f"{workProgram.nameWorkProgram}_{workProgram.idUser}.json")
-    isExistDirectionPath, isExistWorkProgramPath = uploadFileWorkProgram(pathStorage / pathWorkProgram, workProgram)
+    isExistDirectionPath, isExistWorkProgramPath = uploadFileWorkProgram(pathStorage / pathWorkProgram, translated_program)
     if not isExistDirectionPath:
-        addResult = db.addUserFolder(workProgram.idUser, str(pathWorkProgram.parent))
+        addResult = db.addUserFolder(translated_program.idUser, str(pathWorkProgram.parent))
         if not addResult:
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={"responseMessage": "DataBase add user folder error!"}
             )
-    if not isExistWorkProgramPath:
-        addResult = db.addWorkProgram(workProgram.idUser, str(pathWorkProgram.parent), str(pathWorkProgram))
-        if not addResult:
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"responseMessage": "DataBase add user file error!"}
-            )
+
+    addResult = db.upsertWorkProgram(translated_program.idUser, str(pathWorkProgram.parent), str(pathWorkProgram))
+    if not addResult:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"responseMessage": "DataBase add/update user file error!"}
+        )
+
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content={"responseMessage": "ok"}
+        content={
+            "responseMessage": "ok",
+            "isOverwritten": isExistWorkProgramPath,
+            "savedFilePath": str(pathWorkProgram),
+            "translatedFieldsCount": translation_stats.translated_fields_count
+        }
     )
 
 @router.get("/get-programs")
