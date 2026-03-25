@@ -60,7 +60,7 @@ def login(user: User, db: DataBaseController = Depends(get_db)):
             content={"responseMessage": "ok", "id": result["id"]}
     )
 
-@router.post("/registration")
+@router.post("/sign-up")
 def registration(user: User, db: DataBaseController = Depends(get_db)):
     """Метод обработки регистрации пользователя.
     Возвращает код и ответ в формате:
