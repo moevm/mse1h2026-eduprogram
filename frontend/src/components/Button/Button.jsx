@@ -29,7 +29,7 @@ function Button({
       type={type}
       disabled={disabled}
     >
-      {children}
+      <span>{children}</span>
     </button>
   );
 }

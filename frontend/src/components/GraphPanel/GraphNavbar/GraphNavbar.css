@@ -1,0 +1,25 @@
+.graph-navbar {
+    inline-size: 100%;
+    block-size: 70px;
+    background-color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-inline: 30px;
+}
+
+.logo {
+    inline-size: 150px;
+    block-size: 43px;
+    background: #CCCCCC;
+}
+
+.navbar-end {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.custom-button {
+    margin: 0;
+}
