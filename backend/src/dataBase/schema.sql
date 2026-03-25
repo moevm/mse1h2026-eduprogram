@@ -6,23 +6,23 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS user_folders (
     id SERIAL PRIMARY KEY,
-    login VARCHAR(50) NOT NULL,
+    idUser INT NOT NULL,
     folder_name VARCHAR(255) NOT NULL,
 
     CONSTRAINT fk_user_folders_login
-        FOREIGN KEY (login)
-        REFERENCES users(login)
+        FOREIGN KEY (idUser)
+        REFERENCES users(id)
         ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS uploaded_files (
     id SERIAL PRIMARY KEY,
-    login VARCHAR(50) NOT NULL,
+    idUser INT NOT NULL,
     folder_name VARCHAR(255) NOT NULL,
     file_path VARCHAR(1024) NOT NULL,
 
     CONSTRAINT fk_uploaded_files_login
-        FOREIGN KEY (login)
-        REFERENCES users(login)
+        FOREIGN KEY (idUser)
+        REFERENCES users(id)
         ON DELETE CASCADE
 );

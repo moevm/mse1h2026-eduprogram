@@ -3,6 +3,10 @@ import hashlib
 
 class DataBaseController:
     """Контроллер базы данных по хранению пользователей и файлов университетов"""
+
+    WORK_PROGRAM_PATH_INDEX = 3
+    WORK_PROGRAM_FOLDER_INDEX = 2
+
     def __init__(self, dbName: str, host: str, port: str, user: str, password: str,
                  minConnNumber: int, maxConnNumber: int):
         self.__dbName = dbName
@@ -109,6 +113,48 @@ class DataBaseController:
         request = f"INSERT INTO {self.__tableWorkPrograms} ({", ".join(self.__tableWorkProgramsFields)}) VALUES (%s, %s, %s);"
         args = (idUser, folderName, filePath)
         return self.__insertOperation(request, args)
+
+    def getWorkPrograms(self, idUser: int) -> list:
+        """
+        Метод возвращает загруженные пользователем рабочие планы.
+        """
+        request = f"SELECT * FROM {self.__tableWorkPrograms} WHERE idUser = %s"
+        args = (idUser,)
+
+        result = self.__findOperation(request, args)
+        programs = []
+        if result:
+            programs = [row[DataBaseController.WORK_PROGRAM_FOLDER_INDEX] for row in result]
+
+        return programs
+
+    def checkWorkProgram(self, idUser: int, workProgramFolder: str) -> bool:
+        """
+        Метод проверяет наличия записи пути workProgramPath для пользователя с
+        идентификатором idUser. Нужно для уверенности, что с фронт части путь пришел
+        правильно.
+        """
+        request = f"SELECT * FROM {self.__tableWorkPrograms} WHERE idUser = %s AND folder_name = %s"
+        args = (idUser, workProgramFolder)
+
+        result = self.__findOperation(request, args)
+        if result:
+            return True
+
+        return False
+
+    def getWorkProgramPath(self, idUser: int, workProgramFolder: str):
+        request = f"SELECT * FROM {self.__tableWorkPrograms} WHERE idUser = %s AND folder_name = %s"
+        args = (idUser, workProgramFolder)
+
+        result = self.__findOperation(request, args)
+        path = ""
+        if result:
+            path = result[0][DataBaseController.WORK_PROGRAM_PATH_INDEX]
+
+        return path
+
+
 
     def addUserFolder(self, idUser: int, filePath: str) -> bool:
         """Метода добавления папки пользователя в базу данных.
