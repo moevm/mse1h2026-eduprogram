@@ -138,3 +138,37 @@ def getPrograms(userId : int, db: DataBaseController = Depends(get_db)):
             status_code=status.HTTP_200_OK,
             content={ "programs": programs }
         )
+
+@router.get("/show-graph")
+def getCertainProgram(userId: int, pathToProgramFolder: str, db: DataBaseController = Depends(get_db)):
+    isProgramExist = db.checkWorkProgram(userId, pathToProgramFolder)
+    if not isProgramExist:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"responseMessage": "Work program not found"}
+        )
+
+    pathStorage = Path(os.getenv('LOCAL_PATH_TO_STORAGE'))
+    workProgramPath = pathStorage / de.getWorkProgramPath(userId, pathToProgramFolder)
+
+    if not workProgramPath.is_file():
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"responseMessage": "Work program not found"}
+        )
+    
+    try:
+        with open(pathWorkProgram, 'r', encoding="utf-8") as fileWorkProgramJson:
+            programData = json.load(fileWorkProgramJson)
+        
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=programData
+        )
+        
+    except Exception as ex:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"responseMessage": f"Error reading file: {str(ex)}"}
+        )
+    
