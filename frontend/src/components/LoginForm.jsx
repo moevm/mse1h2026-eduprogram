@@ -26,7 +26,7 @@ function LoginForm() {
     const result = await login(email, password);
     
     if (result.success) {
-      document.body.innerHTML = '<div></div>';
+      navigate('/graph');
     } else {
       setError(result.error);
     }
