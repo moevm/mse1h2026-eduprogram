@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import ProgramsModal from '../components/ProgramsModal';
-import Button from '../components/Button';
+import React, { useState } from 'react';
+import ProgramsModal from '../../components/ProgramsModal';
+import Button from '../../components/Button/Button';
+import Navbar from "../../components/Navbar/Navbar";
+import "./MainPage.css"
 
 const MainPage = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -33,18 +35,19 @@ const MainPage = () => {
 
   return (
     <>
-        <Button
-          className="custom-button-margin"
-          type="button"
-          color="#000000"
-          onClick={fetchPrograms}
-          width="260px"
-          height="43px"
-          absolute={false}
-          disabled={loading}
-        >
-            {loading ? 'Загрузка...' : 'Показать граф'}
-        </Button>
+      <Navbar/>
+      <Button
+        className="custom-button-margin"
+        type="button"
+        color="#000000"
+        onClick={fetchPrograms}
+        width="260px"
+        height="43px"
+        absolute={false}
+        disabled={loading}
+      >
+          {loading ? 'Загрузка...' : 'Показать граф'}
+      </Button>
 
       <ProgramsModal 
         isOpen={isOpen}

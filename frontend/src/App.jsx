@@ -5,7 +5,7 @@ import RegisterPage from './pages/RegisterPage/RegisterPage';
 import WorkProgramPage from './pages/WorkProgramPage/WorkProgramPage';
 import GraphPage from './pages/GraphPage/GraphPage';
 import './assets/styles/global.css';
-import MainPage from './pages/MainPage';
+import MainPage from './pages/MainPage/MainPage';
 
 function App() {
   return (

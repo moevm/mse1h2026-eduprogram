@@ -1,6 +1,5 @@
-import { useState } from 'react';
 import './ProgramsModal.css';
-import Button from '../components/Button';
+import Button from '../components/Button/Button';
 
 const ProgramsModal = ({ isOpen, onClose, programs, onShowGraph }) => {
   if (!isOpen) return null;

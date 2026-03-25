@@ -1,4 +1,5 @@
 .graph-aside {
     grid-column: 1;
     background-color: rgba(243,243,243);
+    border-right:  solid 1px rgb(213, 213, 213);
 }
