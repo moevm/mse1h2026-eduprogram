@@ -134,7 +134,7 @@ class DataBaseController:
         идентификатором idUser. Нужно для уверенности, что с фронт части путь пришел
         правильно.
         """
-        request = f"SELECT * FROM {self.__tableWorkPrograms} WHERE idUser = %s AND workProgramPath = %s"
+        request = f"SELECT * FROM {self.__tableWorkPrograms} WHERE idUser = %s AND folder_name = %s"
         args = (idUser, workProgramFolder)
 
         result = self.__findOperation(request, args)
@@ -144,7 +144,7 @@ class DataBaseController:
         return False
 
     def getWorkProgramPath(self, idUser: int, workProgramFolder: str):
-        request = f"SELECT * FROM {self.__tableWorkPrograms} WHERE idUser = %s AND workProgramPath = %s"
+        request = f"SELECT * FROM {self.__tableWorkPrograms} WHERE idUser = %s AND folder_name = %s"
         args = (idUser, workProgramFolder)
 
         result = self.__findOperation(request, args)
