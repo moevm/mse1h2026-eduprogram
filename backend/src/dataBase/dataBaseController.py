@@ -110,12 +110,12 @@ class DataBaseController:
         args = (idUser, folderName, filePath)
         return self.__insertOperation(request, args)
 
-    def getWorkPrograms(self, id: int) -> list:
+    def getWorkPrograms(self, idUser: int) -> list:
         """
         Метод возвращает загруженные пользователем рабочие планы.
         """
         request = f"SELECT * FROM {self.__tableWorkPrograms} WHERE idUser = %s"
-        args = (id,)
+        args = (idUser,)
 
         result = self.__findOperation(request, args)
         programs = []
@@ -123,6 +123,21 @@ class DataBaseController:
             programs = [row[2] for row in result]
 
         return programs
+
+    def checkWorkProgram(self, idUser: int, workProgramPath: str) -> bool:
+        """
+        Метод проверяет наличия записи пути workProgramPath для пользователя с
+        идентификатором idUser. Нужно для уверенности, что с фронт части путь пришел
+        правильно.
+        """
+        request = f"SELECT * FROM {self.__tableWorkPrograms} WHERE idUser = %s AND workProgramPath = %s"
+        args = (idUser, workProgramPath)
+
+        result = self.__findOperation(request, args)
+        if result:
+            return True
+
+        return False
 
 
     def addUserFolder(self, idUser: int, filePath: str) -> bool:
