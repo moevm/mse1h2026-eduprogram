@@ -4,6 +4,7 @@ from src.dataBase.dependencies import get_db
 from src.dataBase.dataBaseStructs import User, WorkProgram
 from src.dataBase.dataBaseController import DataBaseController
 from src.api.translator import translate_work_program_values
+from typing import Dict, Any
 import os
 from pathlib import Path
 import json
@@ -93,61 +94,82 @@ def registration(user: User, db: DataBaseController = Depends(get_db)):
     )
 
 @router.post("/add-program")
-def addProgram(workProgram: WorkProgram, db: DataBaseController = Depends(get_db)):
+def addProgram(workProgram: Dict[str, Any], db: DataBaseController = Depends(get_db)):
     """Метод добавления учебной программы.
     Возвращает код и ответ в формате.
     {responseMessage: {сообщение от сервера}}"""
-    if not db.isConnected():
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"responseMessage": "DataBase connect error!"}
-        )
-    user = db.findUserById(workProgram.idUser)
-    if len(user) == 0:
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"responseMessage": "Not find current user!"}
-        )
 
-    try:
-        translated_program, translation_stats = translate_work_program_values(workProgram)
-    except Exception as error:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                "responseMessage": "Translation service unavailable",
-                "error": str(error)
-            }
-        )
+    workProgramName = ""
+    for key, value in workProgram.items():
+        workProgramName = key
+        break
 
-    pathStorage = Path(os.getenv('LOCAL_PATH_TO_STORAGE'))
-    pathWorkProgram = (Path(workProgram.nameUniversity) / workProgram.nameDirection /
-                       f"{workProgram.nameWorkProgram}_{workProgram.idUser}.json")
-    isExistDirectionPath, isExistWorkProgramPath = uploadFileWorkProgram(pathStorage / pathWorkProgram, translated_program)
-    if not isExistDirectionPath:
-        addResult = db.addUserFolder(translated_program.idUser, str(pathWorkProgram.parent))
-        if not addResult:
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"responseMessage": "DataBase add user folder error!"}
-            )
+    pathStorage = Path(os.getenv('LOCAL_PATH_TO_STORAGE', './storage'))
+    pathWorkProgram = pathStorage / f"{workProgramName}.json"
 
-    addResult = db.upsertWorkProgram(translated_program.idUser, str(pathWorkProgram.parent), str(pathWorkProgram))
-    if not addResult:
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"responseMessage": "DataBase add/update user file error!"}
-        )
+    pathWorkProgram.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(pathWorkProgram, 'w', encoding='utf-8') as f:
+        json.dump(workProgram, f, ensure_ascii=False, indent=2)
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={
             "responseMessage": "ok",
-            "isOverwritten": isExistWorkProgramPath,
-            "savedFilePath": str(pathWorkProgram),
-            "translatedFieldsCount": translation_stats.translated_fields_count
         }
     )
+
+    # if not db.isConnected():
+    #     return JSONResponse(
+    #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    #         content={"responseMessage": "DataBase connect error!"}
+    #     )
+    # user = db.findUserById(workProgram.idUser)
+    # if len(user) == 0:
+    #     return JSONResponse(
+    #         status_code=status.HTTP_401_UNAUTHORIZED,
+    #         content={"responseMessage": "Not find current user!"}
+    #     )
+    #
+    # try:
+    #     translated_program, translation_stats = translate_work_program_values(workProgram)
+    # except Exception as error:
+    #     return JSONResponse(
+    #         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+    #         content={
+    #             "responseMessage": "Translation service unavailable",
+    #             "error": str(error)
+    #         }
+    #     )
+    #
+    # pathStorage = Path(os.getenv('LOCAL_PATH_TO_STORAGE'))
+    # pathWorkProgram = (Path(workProgram.nameUniversity) / workProgram.nameDirection /
+    #                    f"{workProgram.nameWorkProgram}_{workProgram.idUser}.json")
+    # isExistDirectionPath, isExistWorkProgramPath = uploadFileWorkProgram(pathStorage / pathWorkProgram, translated_program)
+    # if not isExistDirectionPath:
+    #     addResult = db.addUserFolder(translated_program.idUser, str(pathWorkProgram.parent))
+    #     if not addResult:
+    #         return JSONResponse(
+    #             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    #             content={"responseMessage": "DataBase add user folder error!"}
+    #         )
+    #
+    # addResult = db.upsertWorkProgram(translated_program.idUser, str(pathWorkProgram.parent), str(pathWorkProgram))
+    # if not addResult:
+    #     return JSONResponse(
+    #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    #         content={"responseMessage": "DataBase add/update user file error!"}
+    #     )
+    #
+    # return JSONResponse(
+    #     status_code=status.HTTP_200_OK,
+    #     content={
+    #         "responseMessage": "ok",
+    #         "isOverwritten": isExistWorkProgramPath,
+    #         "savedFilePath": str(pathWorkProgram),
+    #         "translatedFieldsCount": translation_stats.translated_fields_count
+    #     }
+    # )
 
 @router.get("/get-programs")
 def getPrograms(userId : int, db: DataBaseController = Depends(get_db)):
