@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import TreeNode from './TreeNode';
 import EmptyState from './EmptyState';
 import TreeActions from './TreeActions';
@@ -7,23 +8,22 @@ import { generateId, convertToBackendFormat, submitProgram } from './utils';
 import './TreeEditor.css';
 
 const TreeEditor = () => {
+  const navigate = useNavigate();
 
-  const [programName, setProgramName] = useState(''); // название всей программы
+  const [programName, setProgramName] = useState(''); 
 
-  // Список дисциплин (корневые элементы дерева)
   const [disciplines, setDisciplines] = useState([
     {
       id: generateId(),
       name: '',
       type: 'discipline',
       previousDisciplines: [],
-      children: [] // внутри будут темы, а в темах - подтемы
+      children: []
     }
   ]);
 
-  const [showJson, setShowJson] = useState(false); // показывать/скрыть JSON
+  const [showJson, setShowJson] = useState(false);
 
-  // Добавление новой дисциплины
   const handleAddDiscipline = () => {
     setDisciplines([
       ...disciplines,
@@ -37,22 +37,28 @@ const TreeEditor = () => {
     ]);
   };
 
-  // Обновление или удаление дисциплины по индексу
   const handleDisciplineUpdate = (index, updated) => {
     if (updated === null) {
-      // Удаляем дисциплину
       setDisciplines(disciplines.filter((_, i) => i !== index));
     } else {
-      // Обновляем существующую
       const copy = [...disciplines];
       copy[index] = updated;
       setDisciplines(copy);
     }
   };
 
-  // Показать/скрыть JSON представление
   const handleToggleJson = () => {
     setShowJson(!showJson);
+  };
+
+  const handleSubmitProgram = async () => {
+    const result = await submitProgram(programName, disciplines);
+    if (result.success) {
+      alert('Рабочая программа успешно добавлена');
+      navigate('/main');
+      return;
+    }
+    alert(result.error || 'Ошибка отправки программы');
   };
 
   return (
@@ -77,14 +83,13 @@ const TreeEditor = () => {
 
       <div className="tree-root">
         {disciplines.length === 0
-          ? <EmptyState /> // показываем заглушку если нет дисциплин
+          ? <EmptyState />
           : disciplines.map((discipline, index) => (
               <TreeNode
                 key={discipline.id}
                 node={discipline}
                 level={0}
 
-                // Добавление дисциплины-соседа после текущей
                 onAddSibling={() => {
                   const newNode = {
                     id: generateId(),
@@ -122,7 +127,7 @@ const TreeEditor = () => {
       <div className="submit-block">
         <button
           className="submit-btn"
-          onClick={submitProgram}
+          onClick={handleSubmitProgram}
         >
           Отправить программу
         </button>
