@@ -80,6 +80,88 @@ const GraphPanel = ({ data }) => {
     setSelectedNodeIds(nodeIds);
   };
 
+  // Получаем все дочерние узлы для выбранных (темы для дисциплин, подтемы для тем)
+  const getCascadeNodeIds = useCallback((baseNodeIds) => {
+    const cascadeNodeIds = new Set(baseNodeIds);
+
+    baseNodeIds.forEach((nodeId) => {
+      const node = nodeOptions.find((candidate) => candidate.id === nodeId);
+      if (!node) return;
+
+      if (node.nodeType === 'discipline') {
+        nodeOptions.forEach((candidate) => {
+          if (candidate.nodeType !== 'topic' && candidate.nodeType !== 'subtopic') return;
+          if (candidate.id.startsWith(`topic::${nodeId}::`) || candidate.id.startsWith(`subtopic::${nodeId}::`)) {
+            cascadeNodeIds.add(candidate.id);
+          }
+        });
+        return;
+      }
+
+      if (node.nodeType === 'topic') {
+        const parts = nodeId.split('::');
+        const subject = parts[1];
+        const topicName = parts[2];
+        if (!subject || !topicName) return;
+
+        const subtopicPrefix = `subtopic::${subject}::${topicName}::`;
+        nodeOptions.forEach((candidate) => {
+          if (candidate.nodeType !== 'subtopic') return;
+          if (candidate.id.startsWith(subtopicPrefix)) {
+            cascadeNodeIds.add(candidate.id);
+          }
+        });
+      }
+    });
+
+    return Array.from(cascadeNodeIds);
+  }, [nodeOptions]);
+
+  const handleHideSelected = useCallback(() => {
+    if (!selectedNodeIds.length) return;
+
+    const nodesToHide = getCascadeNodeIds(selectedNodeIds);
+    const newlyHidden = nodesToHide.filter((id) => !hiddenNodeIds.includes(id));
+    
+    if (newlyHidden.length) {
+      historyStepRef.current += 1;
+      setHiddenNodeIds((prev) => Array.from(new Set([...prev, ...newlyHidden])));
+      setHideHistory((prev) => [
+        ...prev,
+        { step: historyStepRef.current, nodeIds: newlyHidden }
+      ]);
+    }
+
+    setSelectedNodeIds([]);
+  }, [getCascadeNodeIds, hiddenNodeIds, selectedNodeIds]);
+
+  const handleKeepOnlySelectedAndDescendants = useCallback(() => {
+    if (!selectedNodeIds.length) return;
+
+    const nodesToKeep = new Set(getCascadeNodeIds(selectedNodeIds));
+    const nextHiddenNodeIds = nodeOptions
+      .map((node) => node.id)
+      .filter((id) => !nodesToKeep.has(id));
+
+    const currentHidden = new Set(hiddenNodeIds);
+    const hasChanges =
+      nextHiddenNodeIds.length !== hiddenNodeIds.length ||
+      nextHiddenNodeIds.some((id) => !currentHidden.has(id));
+
+    if (!hasChanges) return;
+
+    historyStepRef.current += 1;
+    setHiddenNodeIds(nextHiddenNodeIds);
+    setHideHistory((prev) => [
+      ...prev,
+      {
+        step: historyStepRef.current,
+        type: 'snapshot',
+        previousHiddenNodeIds: hiddenNodeIds
+      }
+    ]);
+  }, [getCascadeNodeIds, hiddenNodeIds, nodeOptions, selectedNodeIds]);
+
   if (!data) {
     return <div className="graph-panel-empty">Данные графа не загружены</div>;
   }
@@ -98,6 +180,10 @@ const GraphPanel = ({ data }) => {
           data={data}
           selectedNodeIds={selectedNodeIds}
           hiddenNodeIds={hiddenNodeIds}
+          onHideSelected={handleHideSelected}
+          hideButtonText={getHideButtonText}
+          keepOnlyButtonText="Оставить только выделенные и потомков"
+          onKeepOnlySelectedAndDescendants={handleKeepOnlySelectedAndDescendants}
         />
       </div>
     </>

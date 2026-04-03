@@ -1,11 +1,51 @@
-import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import './GraphField.css';
 
 cytoscape.use(dagre);
 
-const GraphField = forwardRef(({ data, onNodeSelect }, ref) => {
+const applyGraphVisibility = (cy, selectedNodeIds, hiddenNodeIds) => {
+  if (!cy) return;
+
+  cy.batch(() => {
+    cy.nodes().removeClass('highlighted').style('display', 'element');
+    cy.edges().style('display', 'element');
+    cy.nodes().unselect();
+
+    selectedNodeIds.forEach((nodeId) => {
+      const node = cy.getElementById(nodeId);
+      if (node.nonempty()) {
+        node.addClass('highlighted');
+        node.select();
+      }
+    });
+
+    hiddenNodeIds.forEach((nodeId) => {
+      const node = cy.getElementById(nodeId);
+      if (node.nonempty()) {
+        node.style('display', 'none');
+        node.connectedEdges().style('display', 'none');
+      }
+    });
+  });
+};
+
+const GraphField = forwardRef(({ 
+  data, 
+  selectedNodeIds = [], 
+  hiddenNodeIds = [], 
+  onHideSelected, 
+  hideButtonText = 'Скрыть выбранные', 
+  keepOnlyButtonText = 'Оставить только выделенные и потомков', 
+  onKeepOnlySelectedAndDescendants, 
+  onHideSubtopicsForDisciplines, 
+  onHideTopicsAndSubtopicsForDisciplines, 
+  areAllSelectedDisciplines = false, 
+  onToggleNodeSelection, 
+  onSelectionChange 
+}, ref) => {
+  const shellRef = useRef(null);
   const containerRef = useRef(null);
   const cyRef = useRef(null);
 
