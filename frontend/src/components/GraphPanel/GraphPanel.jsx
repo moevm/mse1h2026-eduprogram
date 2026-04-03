@@ -162,18 +162,240 @@ const GraphPanel = ({ data }) => {
     ]);
   }, [getCascadeNodeIds, hiddenNodeIds, nodeOptions, selectedNodeIds]);
 
+  const handleHideSubtopicsForDisciplines = useCallback(() => {
+    if (!selectedNodeIds.length) return;
+
+    const disciplineIds = selectedNodeIds
+      .map((id) => nodeOptions.find((n) => n.id === id))
+      .filter((n) => n && n.nodeType === 'discipline')
+      .map((n) => n.id);
+
+    if (!disciplineIds.length) return;
+
+    const nodesToHide = nodeOptions
+      .filter((node) => {
+        if (node.nodeType !== 'subtopic') return false;
+        return disciplineIds.some((disciplineId) => node.id.includes(`::${disciplineId}::`));
+      })
+      .map((node) => node.id);
+
+    if (!nodesToHide.length) return;
+
+    const newlyHidden = nodesToHide.filter((id) => !hiddenNodeIds.includes(id));
+    if (newlyHidden.length) {
+      historyStepRef.current += 1;
+      setHiddenNodeIds((prev) => Array.from(new Set([...prev, ...newlyHidden])));
+      setHideHistory((prev) => [
+        ...prev,
+        { step: historyStepRef.current, nodeIds: newlyHidden }
+      ]);
+    }
+  }, [selectedNodeIds, nodeOptions, hiddenNodeIds]);
+
+  const handleHideTopicsAndSubtopicsForDisciplines = useCallback(() => {
+    if (!selectedNodeIds.length) return;
+
+    const disciplineIds = selectedNodeIds
+      .map((id) => nodeOptions.find((n) => n.id === id))
+      .filter((n) => n && n.nodeType === 'discipline')
+      .map((n) => n.id);
+
+    if (!disciplineIds.length) return;
+
+    const nodesToHide = nodeOptions
+      .filter((node) => {
+        if (node.nodeType !== 'topic' && node.nodeType !== 'subtopic') return false;
+        return disciplineIds.some((disciplineId) => node.id.includes(`::${disciplineId}::`));
+      })
+      .map((node) => node.id);
+
+    if (!nodesToHide.length) return;
+
+    const newlyHidden = nodesToHide.filter((id) => !hiddenNodeIds.includes(id));
+    if (newlyHidden.length) {
+      historyStepRef.current += 1;
+      setHiddenNodeIds((prev) => Array.from(new Set([...prev, ...newlyHidden])));
+      setHideHistory((prev) => [
+        ...prev,
+        { step: historyStepRef.current, nodeIds: newlyHidden }
+      ]);
+    }
+  }, [selectedNodeIds, nodeOptions, hiddenNodeIds]);
+
+  const handleHideTopicsForDisciplines = useCallback(() => {
+    if (!selectedNodeIds.length) return;
+
+    const disciplineIds = selectedNodeIds
+      .map((id) => nodeOptions.find((n) => n.id === id))
+      .filter((n) => n && n.nodeType === 'discipline')
+      .map((n) => n.id);
+
+    if (!disciplineIds.length) return;
+
+    const nodesToHide = nodeOptions
+      .filter((node) => {
+        if (node.nodeType !== 'topic') return false;
+        return disciplineIds.some((disciplineId) => node.id.includes(`::${disciplineId}::`));
+      })
+      .map((node) => node.id);
+
+    if (!nodesToHide.length) return;
+
+    const newlyHidden = nodesToHide.filter((id) => !hiddenNodeIds.includes(id));
+    if (newlyHidden.length) {
+      historyStepRef.current += 1;
+      setHiddenNodeIds((prev) => Array.from(new Set([...prev, ...newlyHidden])));
+      setHideHistory((prev) => [
+        ...prev,
+        { step: historyStepRef.current, nodeIds: newlyHidden }
+      ]);
+    }
+  }, [selectedNodeIds, nodeOptions, hiddenNodeIds]);
+
+  const handleToggleByType = useCallback((nodeType) => {
+    let nodesToToggle = nodeOptions
+      .filter((node) => node.nodeType === nodeType)
+      .map((node) => node.id);
+
+    // При скрытии тем скрываем и связанные подтемы
+    if (nodeType === 'topic') {
+      const relatedSubtopics = nodeOptions
+        .filter((node) => {
+          if (node.nodeType !== 'subtopic') return false;
+          return nodesToToggle.some((topicId) => node.id.includes(topicId));
+        })
+        .map((node) => node.id);
+      nodesToToggle = [...nodesToToggle, ...relatedSubtopics];
+    }
+
+    if (!nodesToToggle.length) return;
+
+    const allHidden = nodesToToggle.every((id) => hiddenNodeIds.includes(id));
+
+    if (allHidden) {
+      historyStepRef.current += 1;
+      setHiddenNodeIds((prev) =>
+        prev.filter((id) => !nodesToToggle.includes(id))
+      );
+      setHideHistory((prev) => [
+        ...prev,
+        { step: historyStepRef.current, nodeIds: nodesToToggle.filter((id) => hiddenNodeIds.includes(id)) }
+      ]);
+    } else {
+      const newlyHidden = nodesToToggle.filter((id) => !hiddenNodeIds.includes(id));
+      if (newlyHidden.length) {
+        historyStepRef.current += 1;
+        setHiddenNodeIds((prev) => Array.from(new Set([...prev, ...newlyHidden])));
+        setHideHistory((prev) => [
+          ...prev,
+          { step: historyStepRef.current, nodeIds: newlyHidden }
+        ]);
+      }
+    }
+  }, [nodeOptions, hiddenNodeIds]);
+
+  const isAllTopicsHidden = useMemo(() => {
+    const allTopics = nodeOptions.filter((n) => n.nodeType === 'topic').map((n) => n.id);
+    return allTopics.length > 0 && allTopics.every((id) => hiddenNodeIds.includes(id));
+  }, [nodeOptions, hiddenNodeIds]);
+
+  const isAllSubtopicsHidden = useMemo(() => {
+    const allSubtopics = nodeOptions.filter((n) => n.nodeType === 'subtopic').map((n) => n.id);
+    return allSubtopics.length > 0 && allSubtopics.every((id) => hiddenNodeIds.includes(id));
+  }, [nodeOptions, hiddenNodeIds]);
+
+  const areAllSelectedDisciplines = useMemo(() => {
+    if (!selectedNodeIds.length) return false;
+    return selectedNodeIds.every((id) => {
+      const node = nodeOptions.find((n) => n.id === id);
+      return node && node.nodeType === 'discipline';
+    });
+  }, [selectedNodeIds, nodeOptions]);
+
+  const getHideButtonText = useMemo(() => {
+    if (!selectedNodeIds.length) return 'Скрыть выбранные';
+
+    const types = new Set(
+      selectedNodeIds.map((id) => {
+        const node = nodeOptions.find((n) => n.id === id);
+        return node?.nodeType;
+      })
+    );
+
+    const hasOnlyDisciplines = types.size === 1 && types.has('discipline');
+    const hasOnlyTopics = types.size === 1 && types.has('topic');
+    const hasOnlySubtopics = types.size === 1 && types.has('subtopic');
+
+    if (hasOnlyDisciplines) {
+      return `Скрыть выбранные дисциплины и их темы/подтемы (${selectedNodeIds.length})`;
+    }
+    if (hasOnlyTopics) {
+      return `Скрыть выбранные темы и их подтемы (${selectedNodeIds.length})`;
+    }
+    if (hasOnlySubtopics) {
+      return `Скрыть выбранные подтемы (${selectedNodeIds.length})`;
+    }
+
+    return `Скрыть выбранные и потомков (${selectedNodeIds.length})`;
+  }, [selectedNodeIds, nodeOptions]);
+
+  const handleUndoLastHide = useCallback(() => {
+    setHideHistory((prev) => {
+      if (!prev.length) return prev;
+
+      const lastBatch = prev[prev.length - 1];
+      if (lastBatch.type === 'snapshot' && Array.isArray(lastBatch.previousHiddenNodeIds)) {
+        setHiddenNodeIds(lastBatch.previousHiddenNodeIds);
+        return prev.slice(0, -1);
+      }
+
+      const restoredIds = new Set(lastBatch.nodeIds);
+      setHiddenNodeIds((hiddenPrev) => hiddenPrev.filter((id) => !restoredIds.has(id)));
+      return prev.slice(0, -1);
+    });
+  }, []);
+
+  const handleShowAll = () => {
+    setHiddenNodeIds([]);
+    setHideHistory([]);
+  };
+
+  // Глобальный хоткей Ctrl+Z для отмены скрытия
+  useEffect(() => {
+    const handleUndoShortcut = (event) => {
+      const isUndo = (event.metaKey || event.ctrlKey) && !event.shiftKey && event.key.toLowerCase() === 'z';
+      if (!isUndo) return;
+
+      const target = event.target;
+      const tag = target?.tagName?.toLowerCase();
+      const isTyping = tag === 'input' || tag === 'textarea' || target?.isContentEditable;
+      if (isTyping) return;
+
+      event.preventDefault();
+      handleUndoLastHide();
+    };
+
+    window.addEventListener('keydown', handleUndoShortcut);
+    return () => window.removeEventListener('keydown', handleUndoShortcut);
+  }, [handleUndoLastHide]);
+
   if (!data) {
     return <div className="graph-panel-empty">Данные графа не загружены</div>;
   }
 
   return (
     <>
-      <GraphNavbar
-        onExportPNG={handleExportPNG}
-      />
+      <GraphNavbar onExportPNG={handleExportPNG} />
       <div className="graph-panel">
         <GraphAside 
           hiddenNodeIds={hiddenNodeIds}
+          onToggleTopics={() => handleToggleByType('topic')}
+          onToggleSubtopics={() => handleToggleByType('subtopic')}
+          isAllTopicsHidden={isAllTopicsHidden}
+          isAllSubtopicsHidden={isAllSubtopicsHidden}
+          onUndoLastHide={handleUndoLastHide}
+          onShowAll={handleShowAll}
+          canUndo={hideHistory.length > 0}
         />
         <GraphField
           ref={graphFieldRef}
@@ -184,6 +406,12 @@ const GraphPanel = ({ data }) => {
           hideButtonText={getHideButtonText}
           keepOnlyButtonText="Оставить только выделенные и потомков"
           onKeepOnlySelectedAndDescendants={handleKeepOnlySelectedAndDescendants}
+          onHideSubtopicsForDisciplines={handleHideSubtopicsForDisciplines}
+          onHideTopicsAndSubtopicsForDisciplines={handleHideTopicsAndSubtopicsForDisciplines}
+          onHideTopicsForDisciplines={handleHideTopicsForDisciplines}
+          areAllSelectedDisciplines={areAllSelectedDisciplines}
+          onToggleNodeSelection={handleToggleNodeSelection}
+          onSelectionChange={handleSelectionChange}
         />
       </div>
     </>
