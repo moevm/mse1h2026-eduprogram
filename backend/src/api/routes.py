@@ -4,6 +4,7 @@ from src.dataBase.dependencies import get_db
 from src.dataBase.dataBaseStructs import Topic, User, WorkProgram
 from src.dataBase.dataBaseController import DataBaseController
 from src.api.translator import translate_work_program_values
+from src.configs import mapParsersFromTypeToObject
 import os
 from pathlib import Path
 import json
@@ -425,4 +426,20 @@ def getCertainProgram(userId: int, pathToProgramFolder: str, db: DataBaseControl
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"responseMessage": f"Error reading file: {str(ex)}"}
         )
-    
+
+
+@router.get("/available_universities")
+def getAvailableUniversities(db: DataBaseController = Depends(get_db)):
+    if not db.isConnected():
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"responseMessage": "DataBase connect error!"}
+        )
+    resultList = []
+    for type in mapParsersFromTypeToObject:
+        resultList.append(db.findParserByType(type))
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"available-universities": resultList}
+    )
