@@ -43,8 +43,8 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         REACT_APP_API_URL: ${REACT_APP_API_URL:-localhost:8000}
         REACT_APP_API_URL_ADD_PROGRAM: ${REACT_APP_API_URL_ADD_PROGRAM:-localhost:8000}
