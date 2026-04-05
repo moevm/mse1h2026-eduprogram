@@ -158,16 +158,18 @@ class ParserGUAP:
 
     def _extract_topics(self, text: str) -> list[dict[str, Any]]:
         """Извлекает основные разделы и темы из раздела 4."""
+        section_42_text = self._extract_section_text(
+            text,
+            start_patterns=[
+                r'4\.2\.\s*Содержание разделов и тем лекционных занятий',
+                r'4\.2\.\s*Содержание разделов и тем',
+                r'4\.2\.',
+            ],
+            end_pattern=r'^\s*4\.[3-9]\.\s|^\s*5\.\s+|\bИтого\b',
+        )
+
         candidate_sections = [
-            self._extract_section_text(
-                text,
-                start_patterns=[
-                    r'4\.2\.\s*Содержание разделов и тем лекционных занятий',
-                    r'4\.2\.\s*Содержание разделов и тем',
-                    r'4\.2\.',
-                ],
-                end_pattern=r'\b4\.3\.\b|\b4\.4\.\b|\b5\.\s+|\bИтого\b',
-            ),
+            section_42_text,
             self._extract_section_text(
                 text,
                 start_patterns=[
@@ -183,7 +185,7 @@ class ParserGUAP:
                     r'4\.\s*Содержание дисциплины',
                     r'4\.\s*Содержание',
                 ],
-                end_pattern=r'\b4\.3\.\b|\b4\.4\.\b|\b5\.\s+|\bИтого\b',
+                end_pattern=r'^\s*4\.[3-9]\.\s|^\s*5\.\s+|\bИтого\b',
             ),
         ]
 
@@ -200,7 +202,280 @@ class ParserGUAP:
                 best_topics = parsed_topics
                 best_score = score
 
+        if best_topics:
+            subtopics_by_section = self._extract_subtopics_from_section_42(section_42_text)
+            if subtopics_by_section:
+                best_topics = self._enrich_topics_with_section_42(best_topics, subtopics_by_section)
+
+        best_topics = self._split_long_subtopics(best_topics)
+
         return best_topics
+
+    def _split_long_subtopics(self, topics: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Делит слишком длинные подтемы на отдельные подпункты по точкам."""
+        if not topics:
+            return topics
+
+        normalized_topics: list[dict[str, Any]] = []
+        for topic_map in topics:
+            title, subtopics = next(iter(topic_map.items()))
+            if not subtopics:
+                normalized_topics.append({title: []})
+                continue
+
+            split_subtopics: list[str] = []
+            seen: set[str] = set()
+            for subtopic in subtopics:
+                for item in self._split_subtopic_by_dot(subtopic):
+                    normalized = re.sub(r'\s+', ' ', item).strip().lower()
+                    if normalized and normalized not in seen:
+                        split_subtopics.append(item)
+                        seen.add(normalized)
+
+            normalized_topics.append({title: split_subtopics})
+
+        return normalized_topics
+
+    def _split_subtopic_by_dot(self, text: str) -> list[str]:
+        """Разбивает длинную подтему по точкам, если она состоит из нескольких предложений."""
+        cleaned = self._sanitize_topic_text(text)
+        if not cleaned:
+            return []
+
+        # Короткие строки или одиночные предложения оставляем как есть.
+        if len(cleaned) < 90 or cleaned.count('.') == 0:
+            return [cleaned]
+
+        protected = self._protect_dots_for_sentence_split(cleaned)
+        parts = re.split(r'\.\s+', protected)
+        if len(parts) <= 1:
+            return [cleaned]
+
+        result: list[str] = []
+        for part in parts:
+            part = part.replace('<DOT>', '.')
+            item = self._sanitize_topic_text(part)
+            if item and self._is_valid_topic(item):
+                result.append(item)
+
+        return result if len(result) > 1 else [cleaned]
+
+    def _protect_dots_for_sentence_split(self, text: str) -> str:
+        """Защищает точки в инициалах и частых сокращениях от разбиения по предложениям."""
+        protected = text
+
+        # Инициалы
+        protected = re.sub(r'(?<=\b[А-ЯA-Z])\.(?=\s*[А-ЯA-Z]\.)', '<DOT>', protected)
+        protected = re.sub(r'(?<=\b[А-ЯA-Z])\.(?=\s*[А-ЯA-Z][а-яa-zёЁ\-])', '<DOT>', protected)
+
+        # Частые сокращения, которые не должны резать подстроку по предложениям.
+        protected = re.sub(r'\b(и|т)\.(?=\s*(д|п)\.)', r'\1<DOT>', protected, flags=re.IGNORECASE)
+        protected = re.sub(r'\b(др|тд|тп)\.(?=\s)', r'\1<DOT>', protected, flags=re.IGNORECASE)
+
+        # Типовые русские сокращения и обозначения периодов/времени.
+        abbreviation_patterns = [
+            r'\b[IVXLCM]+\s*вв?\.',
+            r'\b\d{1,2}\s*вв?\.',
+            r'\b\d{3,4}\s*гг?\.',
+            r'\bим\.',
+            r'\bстр\.',
+            r'\bрис\.',
+            r'\bтабл\.',
+            r'\bпп\.',
+            r'\bп\.\s*п\.',
+            r'\bт\.\s*е\.',
+            r'\bт\.\s*к\.',
+            r'\bи\.\s*т\.\s*д\.',
+            r'\bи\.\s*т\.\s*п\.',
+        ]
+
+        for pattern in abbreviation_patterns:
+            protected = re.sub(
+                pattern,
+                lambda match: match.group(0).replace('.', '<DOT>'),
+                protected,
+                flags=re.IGNORECASE,
+            )
+
+        return protected
+
+    def _extract_subtopics_from_section_42(self, section_text: str) -> dict[int, list[str]]:
+        """Извлекает подпункты тем из таблицы 4.2 в виде {номер_раздела: [подтемы]}."""
+        if not section_text:
+            return {}
+
+        lines = [line.strip() for line in section_text.splitlines() if line.strip()]
+        if not lines:
+            return {}
+
+        by_section: dict[int, list[str]] = {}
+        current_section: int | None = None
+        current_subtopic: str | None = None
+        expecting_section_title = False
+
+        for line in lines:
+            line_lower = line.lower()
+            if re.match(r'^\s*4\.[3-9]\.', line) or re.search(r'\bпрактические\s*\(семинарские\)\s*занятия\b|\bлабораторные\s+занятия\b', line_lower):
+                break
+
+            if re.search(r'\b(таблица|номер\s+раздела|название\s+и\s+содержание|содержание\s+разделов|итого)\b', line_lower):
+                continue
+
+            if re.fullmatch(r'\d+', line):
+                current_section = int(line)
+                by_section.setdefault(current_section, [])
+                current_subtopic = None
+                expecting_section_title = True
+                continue
+
+            section_line_match = re.match(r'^Раздел\s*(\d+)\.?\s*(.*)$', line, re.IGNORECASE)
+            if section_line_match:
+                sec_num = int(section_line_match.group(1))
+                remainder = self._sanitize_topic_text(section_line_match.group(2))
+                current_section = sec_num
+                by_section.setdefault(current_section, [])
+                current_subtopic = None
+                expecting_section_title = False
+
+                if remainder:
+                    if '. ' in remainder:
+                        _, inline_subtopics = remainder.split('. ', 1)
+                        for item in self._split_subtopics_from_inline_list(inline_subtopics):
+                            if self._is_valid_topic(item):
+                                existing = {
+                                    re.sub(r'\s+', ' ', topic).strip().lower()
+                                    for topic in by_section[current_section]
+                                }
+                                normalized = re.sub(r'\s+', ' ', item).strip().lower()
+                                if normalized not in existing:
+                                    by_section[current_section].append(item)
+                                    current_subtopic = item
+                    elif self._is_valid_topic(remainder):
+                        existing = {
+                            re.sub(r'\s+', ' ', topic).strip().lower()
+                            for topic in by_section[current_section]
+                        }
+                        normalized = re.sub(r'\s+', ' ', remainder).strip().lower()
+                        if normalized not in existing:
+                            by_section[current_section].append(remainder)
+                            current_subtopic = remainder
+                continue
+
+            topic_match = re.match(r'^Тема\s+(\d+)(?:\.(\d+))?\.?\s*(.*)$', line, re.IGNORECASE)
+            plain_topic_match = re.match(r'^(\d+)\.(\d+)\.?\s*(.*)$', line)
+
+            if topic_match or plain_topic_match:
+                if topic_match:
+                    raw_section_num = int(topic_match.group(1))
+                    subtopic_num = topic_match.group(2)
+                    raw_content = topic_match.group(3)
+
+                    if subtopic_num is None and current_section is not None:
+                        sec_num = current_section
+                    else:
+                        sec_num = raw_section_num
+                else:
+                    sec_num = int(plain_topic_match.group(1))
+                    raw_content = plain_topic_match.group(3)
+
+                content = self._sanitize_topic_text(raw_content)
+                if not content:
+                    current_section = sec_num
+                    by_section.setdefault(current_section, [])
+                    current_subtopic = None
+                    continue
+
+                if self._is_valid_topic(content):
+                    current_section = sec_num
+                    by_section.setdefault(current_section, [])
+                    existing = {
+                        re.sub(r'\s+', ' ', item).strip().lower()
+                        for item in by_section[current_section]
+                    }
+                    normalized = re.sub(r'\s+', ' ', content).strip().lower()
+                    if normalized not in existing:
+                        by_section[current_section].append(content)
+                    current_subtopic = content
+                continue
+
+            if current_section is not None and expecting_section_title:
+                if re.search(r'[.!?]\s*$', line):
+                    expecting_section_title = False
+                current_subtopic = None
+                continue
+
+            if current_section is not None and current_subtopic and not re.match(r'^(Тема\s+\d+\.\d+|\d+)$', line, re.IGNORECASE):
+                if re.match(r'^\s*4\.[3-9]\.', line) or re.search(r'\bпрактические\s*\(семинарские\)\s*занятия\b|\bлабораторные\s+занятия\b', line_lower):
+                    break
+                extra = self._sanitize_topic_text(line)
+                if extra and self._is_valid_topic(extra):
+                    merged = self._clean_text(f'{current_subtopic} {extra}')
+                    merged_list = by_section[current_section]
+                    merged_list[-1] = merged
+                    current_subtopic = merged
+                continue
+
+            if current_section is not None:
+                plain_content = self._sanitize_topic_text(line)
+                if plain_content and self._is_valid_topic(plain_content):
+                    existing = {
+                        re.sub(r'\s+', ' ', item).strip().lower()
+                        for item in by_section[current_section]
+                    }
+                    normalized = re.sub(r'\s+', ' ', plain_content).strip().lower()
+                    if normalized not in existing:
+                        by_section[current_section].append(plain_content)
+                        current_subtopic = plain_content
+
+        return {k: v for k, v in by_section.items() if v}
+
+    def _split_subtopics_from_inline_list(self, text: str) -> list[str]:
+        """Разбивает строку с перечислением подпунктов (через запятую/точку с запятой)."""
+        normalized = self._sanitize_topic_text(text)
+        if not normalized:
+            return []
+
+        parts = re.split(r'\s*[,;]\s*', normalized)
+        if len(parts) <= 1:
+            return [normalized]
+
+        result: list[str] = []
+        for part in parts:
+            item = self._sanitize_topic_text(part)
+            if item and len(item) >= 2:
+                result.append(item)
+
+        return result
+
+    def _enrich_topics_with_section_42(
+        self,
+        topics: list[dict[str, Any]],
+        subtopics_by_section: dict[int, list[str]],
+    ) -> list[dict[str, Any]]:
+        """Добавляет подпункты из 4.2 к темам из 4.1 по порядку разделов."""
+        if not topics:
+            return topics
+
+        enriched: list[dict[str, Any]] = []
+        for idx, topic_map in enumerate(topics, start=1):
+            title, subtopics = next(iter(topic_map.items()))
+            merged = list(subtopics)
+
+            extra = subtopics_by_section.get(idx, [])
+            if extra:
+                existing = {
+                    re.sub(r'\s+', ' ', item).strip().lower()
+                    for item in merged
+                }
+                for item in extra:
+                    normalized = re.sub(r'\s+', ' ', item).strip().lower()
+                    if normalized not in existing:
+                        merged.append(item)
+                        existing.add(normalized)
+
+            enriched.append({title: merged})
+
+        return enriched
 
     def _score_topics(self, topics: list[dict[str, Any]]) -> float:
         """Оценивает качество извлеченных тем: больше тем и меньше мусора -> выше балл."""
