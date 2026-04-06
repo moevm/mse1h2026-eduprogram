@@ -3,8 +3,11 @@ import os
 import json
 import re
 
+from parsers.BaseParser import BaseParser
+from typing import Any
 
-class ParserSpbPU:
+
+class ParserSpbPU(BaseParser):
     """
         Парсер для СПбПУ Петра Великого.
         Обходит все файлы выбранной дисциплины.
@@ -37,36 +40,20 @@ class ParserSpbPU:
                                          "Раздел дисциплины Содержание \n"
         self.__endTextForEducationalUnits = "5. Образовательные технологии"
 
-    def loadDirectionOfStudy(self, dirOfDirection: str) -> bool:
-        """Метод загрузки нового направления"""
-        if dirOfDirection in self.__directionsOfStudy:
-            return True
+    def parse(self, files: list[tuple[str, bytes]], educational_program_name: str) -> dict[str, list[dict[str, Any]]]:
+        """Метод парсинга набора pdf файлов в один большой json."""
 
-        directory = os.path.join(self.__universityDirName, dirOfDirection)
-        if not os.path.exists(directory) or not os.path.isdir(directory):
-            print(directory)
-            return False
+        resultDisciplines = []
 
-        listOfDisciplines = []
-        for fileNameDiscipline in os.listdir(directory):
-            filePathDiscipline = os.path.join(directory, fileNameDiscipline)
-            if os.path.isfile(filePathDiscipline):
-                discipline, arguments = self.readTextFromFileDiscipline(filePathDiscipline)
-                if discipline and arguments:
-                    listOfDisciplines.append({discipline: arguments})
-        self.__directionsOfStudy[dirOfDirection] = listOfDisciplines
-        return True
+        for fileName, fileBytes in files:
+            disciplineName, disciplineData = self.readTextFromBytesFile(fileBytes, fileName)
 
-    def parse(self, nameDirection: str, listOfDisciplinesFiles : list):
-        """Метод парсинга набора pdf файлов в один большой json.
-        Пример запуска: obj.parse("Программная инженерия", ["1.pdf", "2.pdf", "3.pdf", "4.pdf"])"""
-        listOfParsedDisciplines = []
-        for file in listOfDisciplinesFiles:
-            discipline, arguments = self.readTextFromFileDiscipline(file)
-            if not discipline or not arguments:
-                continue
-            listOfParsedDisciplines.append({discipline: arguments})
-        return {nameDirection: listOfParsedDisciplines}
+            if disciplineName and disciplineData:
+                resultDisciplines.append({
+                    disciplineName: disciplineData
+                })
+
+        return {educational_program_name: resultDisciplines}
 
     def getDirection(self, direction: str) -> dict:
         """Метод получения направления"""
@@ -109,11 +96,11 @@ class ParserSpbPU:
                 break
         return flag and len(text.strip()) > 2
 
-    def readTextFromFileDiscipline(self, filePathDiscipline: str) -> tuple:
+    def readTextFromBytesFile(self, fileBytes: bytes, fileName: str) -> tuple:
         """Прочитать учебный план направления из файла и вернуть информацию"""
         try:
             fullText = ""
-            document = fitz.open(filePathDiscipline)
+            document = fitz.open(stream=fileBytes, filetype="pdf")
             linesBoldFont = []
 
             for page_num in range(len(document)):
@@ -133,7 +120,7 @@ class ParserSpbPU:
 
             document.close()
             if self.__titleOfDocument not in fullText:
-                print(f"{filePathDiscipline}: this is not discipline!")
+                print(f"{fileName}: this is not discipline!")
                 return None, None
 
             indexOfNameDiscipline = fullText.find(self.__titleOfDocument)
@@ -189,5 +176,5 @@ class ParserSpbPU:
             }
 
         except Exception as e:
-            print(f"{filePathDiscipline}: Error: {e}")
+            print(f"{fileName}: Error: {e}")
             return None, None
