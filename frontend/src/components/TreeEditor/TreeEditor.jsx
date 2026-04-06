@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import { useNavigate } from 'react-router-dom';
 import TreeNode from './TreeNode';
 import EmptyState from './EmptyState';
@@ -23,6 +23,21 @@ const TreeEditor = () => {
   ]);
 
   const [showJson, setShowJson] = useState(false);
+
+  useEffect(() => {
+    const getDisciplines = async () => {
+      try {
+        const response = await fetch(`http://${domen}/get-avalible-universities`);
+        const data = await response.json();
+
+        setDisciplines(data);
+      } catch (error) {
+        console.error("Ошибка:", error);
+      }
+    };
+
+    getDisciplines();
+  }, []);
 
   const handleAddDiscipline = () => {
     setDisciplines([
