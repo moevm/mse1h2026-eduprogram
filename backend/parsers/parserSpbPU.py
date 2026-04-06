@@ -27,7 +27,7 @@ class ParserSpbPU:
             }
         }
     """
-    def __init__(self, universityDirName: str):
+    def __init__(self, universityDirName: str = None):
         self.__universityDirName = universityDirName
         self.__directionsOfStudy = {}  # временное решение, потом все будет храниться в БД
         self.__textForPreviousDisciplines = "Изучение дисциплины базируется на результатах освоения " \
@@ -56,6 +56,17 @@ class ParserSpbPU:
                     listOfDisciplines.append({discipline: arguments})
         self.__directionsOfStudy[dirOfDirection] = listOfDisciplines
         return True
+
+    def parse(self, nameDirection: str, listOfDisciplinesFiles : list):
+        """Метод парсинга набора pdf файлов в один большой json.
+        Пример запуска: obj.parse("Программная инженерия", ["1.pdf", "2.pdf", "3.pdf", "4.pdf"])"""
+        listOfParsedDisciplines = []
+        for file in listOfDisciplinesFiles:
+            discipline, arguments = self.readTextFromFileDiscipline(file)
+            if not discipline or not arguments:
+                continue
+            listOfParsedDisciplines.append({discipline: arguments})
+        return {nameDirection: listOfParsedDisciplines}
 
     def getDirection(self, direction: str) -> dict:
         """Метод получения направления"""
