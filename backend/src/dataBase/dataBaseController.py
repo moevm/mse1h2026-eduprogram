@@ -246,7 +246,7 @@ class DataBaseController:
             return {"id": user[0], "login": user[1]}
         return {}
 
-    def addParser(self, universityName: str, parserType: int) -> bool:
+    def addParser(self, universityName: str, parserType: int) -> bool: # parserType тип на str заменить либо лучше enum
         """Метода добавления нового парсера в базу данных.
         Возвращает true, если парсер был успешно добавлен"""
         fields = ", ".join(self.__tableParsersFields)
@@ -254,7 +254,7 @@ class DataBaseController:
         args = (universityName, parserType)
         return self.__insertOperation(request, args)
 
-    def findParserByType(self, parserType: int) -> str | None:
+    def findParserByType(self, parserType: int) -> str | None: # тут тоже
         """Метода возвращает название университета по типу парсера."""
         request = f"SELECT * FROM {self.__tableParsers} WHERE parserType = %s"
         args = (parserType,)

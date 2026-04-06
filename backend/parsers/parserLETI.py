@@ -2,15 +2,46 @@ import fitz
 import os
 import json
 import re
+from .baseParser import BaseParser, ParserType
+from typing import List, Dict
+from fastapi import UploadFile
 
-
-class ParserLETI:
+class ParserLETI(BaseParser):
     """
     Парсер для извлечения данных из рабочих программ дисциплин СПбГЭТУ "ЛЭТИ"
     Извлекает: название дисциплины, предшествующие дисциплины, темы и их содержание
     """
 
-    def __init__(self, universityDirName: str):
+    def get_type(self) -> ParserType:
+        return ParserType.LETI
+    
+
+    async def parse(self, nameDirection: str, files: List[UploadFile]) -> Dict:
+        """
+        Асинхронный парсинг файлов для указанного направления
+        
+        Args:
+            nameDirection: название направления подготовки (например, "Информатика и вычислительная техника")
+            files: список загруженных файлов
+            
+        Returns:
+            Dict: словарь вида { "nameDirection": { "дисциплина": { ... } } }
+        """
+        result = {nameDirection: []}
+        
+        for file in files:
+            try:
+                # Парсим PDF файл
+                parsed_data = self.read_pdf(file)
+                if parsed_data:
+                    result[nameDirection].append(parsed_data)
+            except Exception as e:
+                print(f"Ошибка при обработке файла {file.filename}: {e}")
+            
+        
+        return result
+     
+    def __init__(self, universityDirName: str = None):
 
         self.universityDirName = universityDirName
         self.directionsOfStudy = {}  # Словарь для хранения всех дисциплин по направлениям
@@ -50,7 +81,7 @@ class ParserLETI:
         """Получить все направления"""
         return self.__directionsOfStudy
 
-    def readPdf(self, pdfPath):
+    async def readPdf(self, file: UploadFile) -> Optional[Dict] :
         """
         Основной метод обработки одного PDF файла
         Args:
@@ -58,11 +89,12 @@ class ParserLETI:
         Returns:
             словарь с данными дисциплины или None если не удалось распарсить
         """
+        content = await file.read()
+        doc = fitz.open(stream=content, filetype="pdf")
+    
         fullText = ""
         subjectName = ""
         listPreviousSubject = []
-
-        doc = fitz.open(pdfPath)
 
         # Извлекаем текст со всех страниц
         for page in doc:
