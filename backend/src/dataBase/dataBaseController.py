@@ -263,6 +263,19 @@ class DataBaseController:
         if not result:
             return None
         university = result[0]
-        if len(university) < 3:
+        if len(university) < 2:
+            return None
+        return university[0]
+
+    def findTypeParserByUniversityName(self, universityName: str) -> int | None:
+        """Метода возвращает код парсера по названию университета."""
+        request = f"SELECT * FROM {self.__tableParsers} WHERE universityName = %s"
+        args = (universityName,)
+
+        result = self.__findOperation(request, args)
+        if not result:
+            return None
+        university = result[0]
+        if len(university) < 2:
             return None
         return university[1]
