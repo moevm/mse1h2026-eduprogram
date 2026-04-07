@@ -263,9 +263,9 @@ class DataBaseController:
         if not result:
             return None
         university = result[0]
-        if len(university) < 3:
+        if len(university) < 2:
             return None
-        return university[1]
+        return university[0]
 
     def findTypeParserByUniversityName(self, universityName: str) -> int | None:
         """Метода возвращает код парсера по названию университета."""
@@ -276,6 +276,6 @@ class DataBaseController:
         if not result:
             return None
         university = result[0]
-        if len(university) < 3:
+        if len(university) < 2:
             return None
-        return university[2]
+        return university[1]
