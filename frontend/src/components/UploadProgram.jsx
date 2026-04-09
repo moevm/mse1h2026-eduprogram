@@ -66,7 +66,7 @@ export default function UploadProgram() {
   const [files, setFiles] = useState([]);
   const [university, setUniversity] = useState("");
   const inputRef = useRef();
-  const arrayUniversities = ["ЛЭТИ", "ГУАП", "МТУСИ", "МПУ", "СПБПУ"];
+  const [arrayUniversities, setArrayUniversities] = useState([]);
 
   // Загрузка сохраненных файлов и университета
   useEffect(() => {
@@ -83,6 +83,21 @@ export default function UploadProgram() {
     if (savedUniversity) {
       setUniversity(savedUniversity);
     }
+  }, []);
+
+  useEffect(() => {
+    const getDisciplines = async () => {
+      try {
+        const response = await fetch(`http://${domain}/get-avalible-universities`);
+        const data = await response.json();
+
+        setArrayUniversities(data);
+      } catch (error) {
+        console.error("Ошибка:", error);
+      }
+    };
+
+    getDisciplines();
   }, []);
 
   // Сохранение файлов при изменении
