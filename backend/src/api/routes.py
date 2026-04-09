@@ -8,8 +8,8 @@ from src.configs import mapParsersFromTypeToObject
 import os
 from pathlib import Path
 import json
-import tempfile
 from typing import Any
+from fastapi import UploadFile, File, Form
 
 router = APIRouter()
 
@@ -443,3 +443,80 @@ def getAvailableUniversities(db: DataBaseController = Depends(get_db)):
         status_code=status.HTTP_200_OK,
         content={"available-universities": resultList}
     )
+
+@router.post("/add-program-from-files")
+def add_program_from_files(
+    files: list[UploadFile] = File(...),
+    university_name: str = Form(...),
+    id_user: int = Form(...),
+    db: DataBaseController = Depends(get_db)):
+    """
+    Метод добавления учебной программы из файлов.
+    Возвращает код и ответ в формате.
+    {responseMessage: {сообщение от сервера}}
+    """
+
+    # проверка подключения к БД
+    if not db.isConnected():
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"responseMessage": "DataBase connection error!"})
+
+    # проверка наличия пользователя
+    user = db.findUserById(id_user)
+    if len(user) == 0:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"responseMessage": "Invalid user!"})
+
+    # нахождения типа парсера методом из findTypeParserByUniversityName из контроллера 
+    parser_type = db.findTypeParserByUniversityName(university_name)
+    if parser_type is None:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"responseMessage": f"Parser for university '{university_name}' does not exist!"})
+
+    # подготовка данных файлов для парсера(преобразование из UploadFile в байты, нужно понять конкретно по формату, потому что это не дело)
+    files_data = [(file.filename, file.read()) for file in files]
+    # ===========================================================
+
+    # создание парсера и парсинг
+    # используется словарь из configs.py
+    parser_class = mapParsersFromTypeToObject[parser_type]
+    parser = parser_class()
+    result = parser.parse(files_data, university_name)
+
+    if not result or not isinstance(result, dict):
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"responseMessage": "Files parsing failed!"})
+
+    # сохранение результата
+    pathStorage = Path(os.getenv('LOCAL_PATH_TO_STORAGE'))
+    pathWorkProgram = Path(university_name) / f"{university_name}_{id_user}.json"
+    isExistDirectionPath, isExistFilePath = uploadJsonFile(pathStorage / pathWorkProgram, result)
+
+    # проверка наличия/создание папки пользователя в бд
+    if not isExistDirectionPath:
+        addResult = db.addUserFolder(id_user, str(pathWorkProgram.parent))
+        if not addResult:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "DataBase adding in user folder error!"})
+
+    # добавление файла в папке пользователя в бд(если папка была изначально)
+    addResult = db.upsertWorkProgram(id_user, str(pathWorkProgram.parent), str(pathWorkProgram))
+    if not addResult:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"responseMessage": "DataBase add/update user file error!"})
+
+    # ответ в случае успешного парсинга и сохранения файлов
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "responseMessage": "ok",
+            "savedCount": 1,
+            "isOverwritten": isExistFilePath,
+            "savedFilePath": str(pathWorkProgram),
+            "savedFilePaths": [str(pathWorkProgram)]}) 
