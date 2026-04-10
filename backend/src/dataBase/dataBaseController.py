@@ -249,10 +249,14 @@ class DataBaseController:
     def addParser(self, universityName: str, parserType: int) -> bool:
         """Метода добавления нового парсера в базу данных.
         Возвращает true, если парсер был успешно добавлен"""
-        fields = ", ".join(self.__tableParsersFields)
-        request = f"INSERT INTO {self.__tableParsers} ({fields}) VALUES (%s, %s);"
-        args = (universityName, parserType)
-        return self.__insertOperation(request, args)
+        try:
+            fields = ", ".join(self.__tableParsersFields)
+            request = f"INSERT INTO {self.__tableParsers} ({fields}) VALUES (%s, %s);"
+            args = (universityName, parserType)
+            return self.__insertOperation(request, args)
+        except Exception as e:
+            print("Error:", e)
+            return False
 
     def findParserByType(self, parserType: int) -> str | None:
         """Метода возвращает название университета по типу парсера."""

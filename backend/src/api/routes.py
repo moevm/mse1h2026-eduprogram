@@ -428,7 +428,7 @@ def getCertainProgram(userId: int, pathToProgramFolder: str, db: DataBaseControl
         )
 
 
-@router.get("/available_universities")
+@router.get("/get_available_universities")
 def getAvailableUniversities(db: DataBaseController = Depends(get_db)):
     if not db.isConnected():
         return JSONResponse(
@@ -437,7 +437,9 @@ def getAvailableUniversities(db: DataBaseController = Depends(get_db)):
         )
     resultList = []
     for type in mapParsersFromTypeToObject:
-        resultList.append(db.findParserByType(type))
+        university = db.findParserByType(type)
+        if university:
+            resultList.append(university)
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
