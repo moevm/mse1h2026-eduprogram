@@ -88,8 +88,26 @@ export default function UploadProgram() {
   useEffect(() => {
     const getDisciplines = async () => {
       try {
-        const response = await fetch(`http://${domain}/get-avalible-universities`);
+        const response = await fetch(`http://${domain}/get-available-universities`);
         const data = await response.json();
+
+        if (data == null) {
+          throw new Error("Ошибка: (null/undefined)");
+        }
+        if (!Array.isArray(data)) {
+          throw new Error("Ошибка: Ожидался массив университетов");
+        }
+        if (data.length === 0) {
+          console.warn("Ошибка: Пустой массив");
+          setArrayUniversities([]);
+          return;
+        }
+        const isValid = data.every(
+            (item) => typeof item === "string" && item.trim() !== ""
+        );
+        if (!isValid) {
+          throw new Error("Ошибка: Некорректные данные");
+        }
 
         setArrayUniversities(data);
       } catch (error) {
@@ -183,8 +201,8 @@ export default function UploadProgram() {
           className="select"
         >
           <option value="">Выберите университет</option>
-          {arrayUniversities.map((uni, index) => (
-            <option key={index} value={uni}>
+          {arrayUniversities.map((uni) => (
+            <option key={uni} value={uni}>
               {uni}
             </option>
           ))}
