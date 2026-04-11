@@ -10,6 +10,7 @@ def appendParsers():
     db.addParser("МПУ", 2)
     db.addParser("МТУСИ", 3)
     db.addParser("СПБПУ", 4)
+    db.closeConnection()
 
 if __name__ == "__main__":
     appendParsers()
