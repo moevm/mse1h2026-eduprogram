@@ -480,7 +480,10 @@ async def add_program_from_files(
             content={"responseMessage": f"Parser for university '{university_name}' does not exist!"})
 
     # подготовка данных файлов для парсера(преобразование из UploadFile в байты, нужно понять конкретно по формату, потому что это не дело)
-    files_data = [(file.filename, file.read()) for file in files]
+    files_data = []
+    for file in files:
+        file_bytes = await file.read()
+        files_data.append((file.filename, file_bytes))
     # ===========================================================
 
     # создание парсера и парсинг
@@ -489,7 +492,11 @@ async def add_program_from_files(
     parser = parser_class()
     result = parser.parse(files_data, university_name)
 
-    if not result or not isinstance(result, dict):
+    has_disciplines = any(
+        isinstance(value, list) and len(value) > 0 for value in result.values()
+    ) if isinstance(result, dict) else False
+
+    if not result or not isinstance(result, dict) or not has_disciplines:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={"responseMessage": "Files parsing failed!"})
