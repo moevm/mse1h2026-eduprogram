@@ -8,6 +8,7 @@ from src.configs import mapParsersFromTypeToObject
 import os
 from pathlib import Path
 import json
+import tempfile
 from typing import Any
 from fastapi import UploadFile, File, Form
 
@@ -428,7 +429,7 @@ def getCertainProgram(userId: int, pathToProgramFolder: str, db: DataBaseControl
         )
 
 
-@router.get("/get_available_universities")
+@router.get("/get-available-universities")
 def getAvailableUniversities(db: DataBaseController = Depends(get_db)):
     if not db.isConnected():
         return JSONResponse(
@@ -447,7 +448,7 @@ def getAvailableUniversities(db: DataBaseController = Depends(get_db)):
     )
 
 @router.post("/add-program-from-files")
-def add_program_from_files(
+async def add_program_from_files(
     files: list[UploadFile] = File(...),
     university_name: str = Form(...),
     id_user: int = Form(...),

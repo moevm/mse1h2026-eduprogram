@@ -89,7 +89,9 @@ export default function UploadProgram() {
     const getDisciplines = async () => {
       try {
         const response = await fetch(`http://${domain}/get-available-universities`);
-        const data = await response.json();
+        let data = await response.json();
+        
+        data = data["available-universities"];
 
         if (data == null) {
           throw new Error("Ошибка: (null/undefined)");
@@ -171,7 +173,8 @@ export default function UploadProgram() {
 
     const formData = new FormData();
     files.forEach((file) => formData.append("files", file));
-    formData.append("university", university);
+    formData.append("university_name", university);
+    formData.append("id_user", localStorage.getItem("userId"));
 
     try {
       const response = await fetch(
