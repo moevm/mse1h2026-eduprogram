@@ -1,16 +1,17 @@
 import fitz
 import os
 import json
+from parsers.BaseParser import BaseParser
 import re
+from typing import Any
 
-
-class ParserLETI:
+class ParserLETI(BaseParser):
     """
     Парсер для извлечения данных из рабочих программ дисциплин СПбГЭТУ "ЛЭТИ"
     Извлекает: название дисциплины, предшествующие дисциплины, темы и их содержание
     """
 
-    def __init__(self, universityDirName: str):
+    def __init__(self, universityDirName: str = None):
 
         self.universityDirName = universityDirName
         self.directionsOfStudy = {}  # Словарь для хранения всех дисциплин по направлениям
@@ -21,6 +22,25 @@ class ParserLETI:
         self.textForSubjectTopics = "4.1.2 Содержание"  # Раздел с темами
         self.endText = "4.2 Перечень лабораторных работ"  # Конец раздела с темами
         self.textWithNameSubject = "РАБОЧАЯ ПРОГРАММА дисциплины"  # Маркер названия дисциплины
+
+
+    def parse(self, files: list[tuple[str, bytes]], educational_program_name: str) -> dict[str, list[dict[str, Any]]]:
+        """
+        Парсит набор PDF-файлов (в байтах) и возвращает результат
+        """
+        resultDisciplines = []
+
+        for fileName, fileBytes in files:
+            try:
+                disciplineData = self.readPdfFromBytes(fileBytes)
+
+                if disciplineData:
+                    resultDisciplines.append(disciplineData)
+
+            except Exception as e:
+                print(f"{fileName}: Error: {e}")
+
+        return {educational_program_name: resultDisciplines}
 
     def getTextFromDict(self, textDict):
         """
@@ -50,21 +70,14 @@ class ParserLETI:
         """Получить все направления"""
         return self.__directionsOfStudy
 
-    def readPdf(self, pdfPath):
-        """
-        Основной метод обработки одного PDF файла
-        Args:
-            pdfPath: путь к PDF файлу
-        Returns:
-            словарь с данными дисциплины или None если не удалось распарсить
-        """
+    def readPdfFromBytes(self, fileBytes: bytes):
+
         fullText = ""
         subjectName = ""
         listPreviousSubject = []
 
-        doc = fitz.open(pdfPath)
+        doc = fitz.open(stream=fileBytes, filetype="pdf")
 
-        # Извлекаем текст со всех страниц
         for page in doc:
             textDict = page.get_text("dict")
             pageText = self.getTextFromDict(textDict)
@@ -72,19 +85,20 @@ class ParserLETI:
 
         doc.close()
 
-        # Очищаем текст от спецсимволов PDF
         fullText = self.cleanPdfText(fullText)
 
-        # Ищем название дисциплины
-        if fullText.find(self.textWithNameSubject) != -1:
+        
+
+        # название
+        if self.textWithNameSubject in fullText:
             startIdx = fullText.find(self.textWithNameSubject) + len(self.textWithNameSubject) + 2
             endIdx = fullText.find("»", startIdx)
             if endIdx != -1:
                 subjectName = fullText[startIdx:endIdx]
                 subjectName = self.normalizeSpaces(subjectName).capitalize()
 
-        # Ищем предшествующие дисциплины
-        if fullText.find(self.textForPreviousSubject) != -1:
+        # предыдущие дисциплины
+        if self.textForPreviousSubject in fullText:
             startIdx = fullText.find(self.textForPreviousSubject) + len(self.textForPreviousSubject)
             endIdx = fullText.find(self.endTextForPreviousSubject, startIdx)
             if endIdx == -1:
@@ -93,30 +107,23 @@ class ParserLETI:
             subjectBlock = fullText[startIdx:endIdx]
             subjectBlock = self.normalizeSpaces(subjectBlock)
 
-            # Регулярка: находим все названия в кавычках «…»
-            # «(.*?)» - захват всего что между кавычками
             listPreviousSubject = re.findall(r'«(.*?)»', subjectBlock)
             listPreviousSubject = [self.normalizeSpaces(s) for s in listPreviousSubject]
 
-        # Извлекаем блок с темами
+        # темы
         textTopics = ""
         if self.textForSubjectTopics in fullText:
             startIdx = fullText.find(self.textForSubjectTopics) + len(self.textForSubjectTopics)
-            endIdx = fullText.find(self.endText)  # Ищем до начала лабораторных работ
+            endIdx = fullText.find(self.endText)
             textTopics = fullText[startIdx:endIdx].strip()
-            # Удаляем "Тема 1", "Тема 1.", "Тема 1.1" и т.д. в любом регистре
+
             textTopics = re.sub(r'(?i)тема\s*\d+(\.\d+)*\.?\s*', '', textTopics)
-            # Также удаляем просто "Тема" если осталось
             textTopics = re.sub(r'(?i)тема\s*', '', textTopics)
 
-        # Разбиваем на отдельные темы по номерам
         themes = self.splitByNumberedTopics(self.removeTableHeaders(textTopics))
         themes = [self.cleanPdfSpaces(s) for s in themes]
 
-        # Парсим каждую тему
-        parsed = []
-        for topic in themes:
-            parsed.append(self.parseTopicBlock(topic))
+        parsed = [self.parseTopicBlock(topic) for topic in themes]
 
         filteredThemes = [
             theme for theme in parsed
@@ -125,17 +132,16 @@ class ParserLETI:
 
         filtered = self.cleanThemeItems(filteredThemes)
 
-        resultJson = {
+        if not subjectName:
+            return None
+
+        return {
             subjectName: {
                 "previousDisciplines": listPreviousSubject,
                 "topics": filtered
             }
         }
 
-        if not themes:
-            return None
-
-        return resultJson
 
     def start(self):
         """
@@ -386,9 +392,3 @@ class ParserLETI:
                 cleaned.append(newTheme)
 
         return cleaned
-
-
-if __name__ == "__main__":
-
-    parser = ParserLETI(os.path.join(os.path.expanduser("~/Desktop"), "СПбГЭТУ ЛЭТИ"))
-    parser.start()
