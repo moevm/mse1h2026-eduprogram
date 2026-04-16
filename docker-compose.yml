@@ -16,6 +16,19 @@ services:
       timeout: 5s
       retries: 20
 
+  rdf:
+    image: ontotext/graphdb:11.0.1
+    container_name: eduprogram-rdf
+    restart: unless-stopped
+    environment:
+      - GDB_HEAP_SIZE=2g
+      - GDB_MIN_MEM=1g
+      - GDB_MAX_MEM=2g
+    volumes:
+      - rdf_data:/opt/graphdb/home
+    ports:
+      - "7200:7200"
+
   backend:
     build:
       context: .
@@ -33,11 +46,18 @@ services:
       DB_MIN_CONN_NUMBER: 1
       DB_MAX_CONN_NUMBER: 10
       LOCAL_PATH_TO_STORAGE: /app/storage
+      GRAPHDB_HOST: rdf
+      GRAPHDB_PORT: ${GRAPHDB_PORT}
+      GRAPHDB_USER: ${GRAPHDB_USER}
+      GRAPHDB_PASSWORD: ${GRAPHDB_PASSWORD}
+      GRAPHDB_REPOSITORY: ${GRAPHDB_REPOSITORY}
     volumes:
       - backend_storage:/app/storage
     depends_on:
       db:
         condition: service_healthy
+      rdf:
+        condition: service_started
     ports:
       - "8000:8000"
 
@@ -59,3 +79,4 @@ services:
 volumes:
   db_data:
   backend_storage:
+  rdf_data:
