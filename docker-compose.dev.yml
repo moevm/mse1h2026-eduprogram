@@ -1,0 +1,75 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: eduprogram-db-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eduprogram}
+      POSTGRES_USER: ${POSTGRES_USER:-eduprogram}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eduprogram_pass}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./backend/src/dataBase/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eduprogram} -d ${POSTGRES_DB:-eduprogram}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: eduprogram-backend-dev
+    restart: unless-stopped
+    environment:
+      APP_HOST: ${APP_HOST:-0.0.0.0}
+      APP_PORT: ${APP_PORT:-8000}
+      DB_NAME: ${POSTGRES_DB:-eduprogram}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-eduprogram}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-eduprogram_pass}
+      DB_MIN_CONN_NUMBER: 1
+      DB_MAX_CONN_NUMBER: 10
+      LOCAL_PATH_TO_STORAGE: /app/storage
+    volumes:
+      - ./backend:/app/backend
+      - backend_storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/docs' % os.getenv('APP_PORT', '8000'), timeout=3)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    command: sh -c "python appendAvailablesParsers.py && python -m uvicorn main:app --host ${APP_HOST:-0.0.0.0} --port ${APP_PORT:-8000} --reload"
+    ports:
+      - "${APP_PORT:-8000}:8000"
+
+  frontend:
+    image: node:20-alpine
+    container_name: eduprogram-frontend-dev
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+      REACT_APP_API_URL: ${REACT_APP_API_URL:-localhost:8000}
+      REACT_APP_API_URL_ADD_PROGRAM: ${REACT_APP_API_URL_ADD_PROGRAM:-localhost:8000}
+      REACT_APP_API_URL_GET_PROGRAMMS: ${REACT_APP_API_URL_GET_PROGRAMMS:-localhost:8000}
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - backend
+    command: sh -c "npm install && npm start"
+    ports:
+      - "3000:3000"
+
+volumes:
+  db_data:
+  backend_storage:
+  frontend_node_modules:
