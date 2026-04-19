@@ -17,7 +17,7 @@ services:
       retries: 20
 
   rdf:
-    image: ontotext/graphdb:11.0.1
+    image: ontotext/graphdb:11.3.0
     container_name: eduprogram-rdf
     restart: unless-stopped
     environment:
@@ -26,6 +26,7 @@ services:
       - GDB_MAX_MEM=2g
     volumes:
       - rdf_data:/opt/graphdb/home
+      - ./backend/src/rdf/.rdf.license:/opt/graphdb/home/conf/graphdb.license:ro
     ports:
       - "7200:7200"
 

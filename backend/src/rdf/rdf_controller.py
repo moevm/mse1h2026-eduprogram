@@ -29,10 +29,12 @@ class RdfController:
     @staticmethod
     def update_str_data(data: str):
         specialSymbols = ['~', '.', '-', '!', '$', '&', "'", '(', ')', '*', '+', ',',
-                          ';', '=', '/', '?', '#', '@', '%']
+                          ';', '=', '/', '?', '#', '@', '%', '№']
         data = data.replace(" ", "_")
         for symb in specialSymbols:
             data = data.replace(symb, "\\" + symb)
+        data = data.replace("«", "")
+        data = data.replace("»", "")
         return data
 
     def create_repo(self, repo_name: str) -> int:
@@ -92,6 +94,24 @@ class RdfController:
                             f"discipline:{universityClean}\/{programNameClean}\/{previousDisciplineClean} "
                             f"discipline:previousDiscipline "
                             f"discipline:{universityClean}\/{programNameClean}\/{disciplineNameClean} .")
+
+                        try:
+                            cur.execute(
+                                f"""
+                                PREFIX univ: <http://universities/>
+                                PREFIX program: <http://programs/>
+                                PREFIX discipline: <http://disciplines/>
+                                PREFIX topic: <http://topics/>
+                                PREFIX subtopic: <http://subtopic/>
+
+                                INSERT DATA {{
+                                    {previousDisciplines[-1] if len(previousDisciplines) > 0 else ""}
+                                }}
+                                """
+                            )
+                        except Exception as e:
+                            print(f"Incorrect previousDiscipline: {previousDiscipline}. ", e)
+                            continue
                     for topicsData in disciplineData["topics"]:
                         for topicName, subtopicsList in topicsData.items():
                             topicNameClean = self.update_str_data(topicName)
@@ -106,20 +126,71 @@ class RdfController:
                                     f"topic:hasSubtopic "
                                     f"subtopic:{universityClean}\/{programNameClean}\/{disciplineNameClean}\/{topicNameClean}\/{subtopicClean} .")
 
+                                try:
+                                    cur.execute(
+                                        f"""
+                                        PREFIX univ: <http://universities/>
+                                        PREFIX program: <http://programs/>
+                                        PREFIX discipline: <http://disciplines/>
+                                        PREFIX topic: <http://topics/>
+                                        PREFIX subtopic: <http://subtopic/>
+
+                                        INSERT DATA {{
+                                            {subtopics[-1] if len(subtopics) > 0 else ""}
+                                        }}
+                                        """
+                                    )
+                                except Exception as e:
+                                    print(f"Incorrect subtopic: {subtopic}. ", e)
+                                    continue
+
+                            try:
+                                cur.execute(
+                                    f"""
+                                    PREFIX univ: <http://universities/>
+                                    PREFIX program: <http://programs/>
+                                    PREFIX discipline: <http://disciplines/>
+                                    PREFIX topic: <http://topics/>
+                                    PREFIX subtopic: <http://subtopic/>
+
+                                    INSERT DATA {{
+                                        {topics[-1] if len(topics) > 0 else ""}
+                                    }}
+                                    """
+                                )
+                            except Exception as e:
+                                print(f"Incorrect topic: {topicName}. ", e)
+                                continue
+
+                    try:
+                        cur.execute(
+                            f"""
+                            PREFIX univ: <http://universities/>
+                            PREFIX program: <http://programs/>
+                            PREFIX discipline: <http://disciplines/>
+                            PREFIX topic: <http://topics/>
+                            PREFIX subtopic: <http://subtopic/>
+    
+                            INSERT DATA {{
+                                {disciplines[-1] if len(disciplines) > 0 else ""}
+                            }}
+                            """
+                        )
+                    except Exception as e:
+                        print(f"Incorrect discipline: {disciplineName}. ", e)
+                        continue
+
+
             cur.execute(
                 f"""
                 PREFIX univ: <http://universities/>
                 PREFIX program: <http://programs/>
                 PREFIX discipline: <http://disciplines/>
                 PREFIX topic: <http://topics/>
-                PREFIX subtopic: <http://subtopic>
+                PREFIX subtopic: <http://subtopic/>
 
                 INSERT DATA {{
                     univ:{universityClean} univ:hasProgram program:{universityClean}\/{programNameClean} .
-                    {"".join(disciplines)}
-                    {"".join(previousDisciplines)}
-                    {"".join(topics)}
-                    {"".join(subtopics)}
                 }}
                 """
             )
@@ -145,7 +216,7 @@ class RdfController:
                 PREFIX program: <http://programs/>
                 PREFIX discipline: <http://disciplines/>
                 PREFIX topic: <http://topics/>
-                PREFIX subtopic: <http://subtopic>
+                PREFIX subtopic: <http://subtopic/>
                 
                 DELETE {{
                     ?s ?p ?o
@@ -169,6 +240,12 @@ class RdfController:
             return []
         return result[1:]
 
+    def get_data_of_university_and_program(self, universityName: str, programName: str) -> list:
+        result = self._select_data_of_university_and_program(universityName, programName).split("\n")
+        if len(result) <= 1:
+            return []
+        return result[1:]
+
     def _select_all_data(self) -> str | None:
         if not self.db:
             return None
@@ -181,13 +258,46 @@ class RdfController:
                 PREFIX program: <http://programs/>
                 PREFIX discipline: <http://disciplines/>
                 PREFIX topic: <http://topics/>
-                PREFIX subtopic: <http://subtopic>
+                PREFIX subtopic: <http://subtopic/>
 
                 SELECT ?s ?p ?o
                 WHERE {{
                     ?s ?p ?o .
                     FILTER (?p = univ:hasProgram || ?p = program:hasDiscipline || ?p = discipline:previousDiscipline || 
                             ?p = discipline:hasTopic || ?p = topic:hasSubtopic)
+                }}
+                """
+            )
+
+            return result
+        except Exception as e:
+            print("Error:", e)
+            return None
+        finally:
+            if cur:
+                cur.close()
+
+    def _select_data_of_university_and_program(self, universityName: str, programName: str) -> str | None:
+        if not self.db:
+            return None
+        cur = None
+        universityNameClean = self.update_str_data(universityName)
+        programNameClean = self.update_str_data(programName)
+        try:
+            cur = self.db.cursor()
+            result = cur.execute(
+                f"""
+                PREFIX univ: <http://universities/>
+                PREFIX program: <http://programs/>
+                PREFIX discipline: <http://disciplines/>
+                PREFIX topic: <http://topics/>
+                PREFIX subtopic: <http://subtopic/>
+
+                SELECT ?s ?p ?o
+                WHERE {{
+                    ?s ?p ?o .
+                    FILTER(CONTAINS(STR(?o), "{universityNameClean}/{programNameClean}") || 
+                    CONTAINS(STR(?s), "{universityNameClean}/{programNameClean}"))
                 }}
                 """
             )
