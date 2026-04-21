@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Body, Depends, status
 from fastapi.responses import JSONResponse
 from src.dataBase.dependencies import get_db
+from src.rdf.dependencies import get_rdf, repository
 from src.dataBase.dataBaseStructs import Topic, User, WorkProgram
 from src.dataBase.dataBaseController import DataBaseController
+from src.rdf.rdf_controller import RdfController
 from src.api.translator import translate_work_program_values
 from src.configs import mapParsersFromTypeToObject
 import os
@@ -186,7 +188,8 @@ def registration(user: User, db: DataBaseController = Depends(get_db)):
     )
 
 @router.post("/add-program")
-def addProgram(payload: Any = Body(...), db: DataBaseController = Depends(get_db)):
+def addProgram(payload: Any = Body(...), db: DataBaseController = Depends(get_db),
+               rdf: RdfController = Depends(get_rdf)):
     """Метод добавления учебной программы.
     Возвращает код и ответ в формате.
     {responseMessage: {сообщение от сервера}}"""
@@ -196,7 +199,6 @@ def addProgram(payload: Any = Body(...), db: DataBaseController = Depends(get_db
             content={"responseMessage": "DataBase connect error!"}
         )
     is_front_payload = isinstance(payload, dict) and "nameWorkProgram" not in payload
-
     try:
         if is_front_payload:
             if "idUser" not in payload or not isinstance(payload["idUser"], int):
@@ -299,6 +301,7 @@ def addProgram(payload: Any = Body(...), db: DataBaseController = Depends(get_db
                 }
             }
 
+        rdf.add_program(name_university, payload)
         pathWorkProgram = Path(name_university) / name_direction / f"{root_program_name}_{id_user}.json"
         isExistDirectionPath, isExistWorkProgramPath = uploadJsonFile(pathStorage / pathWorkProgram, final_program_json)
 
@@ -389,7 +392,7 @@ def getPrograms(userId : int, db: DataBaseController = Depends(get_db)):
         )
 
     programs = db.getWorkPrograms(userId)
-    
+
     return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={ "programs": programs }
@@ -452,7 +455,8 @@ async def add_program_from_files(
     files: list[UploadFile] = File(...),
     university_name: str = Form(...),
     id_user: int = Form(...),
-    db: DataBaseController = Depends(get_db)):
+    db: DataBaseController = Depends(get_db),
+    rdf: RdfController = Depends(get_rdf)):
     """
     Метод добавления учебной программы из файлов.
     Возвращает код и ответ в формате.
@@ -490,7 +494,7 @@ async def add_program_from_files(
     # используется словарь из configs.py
     parser_class = mapParsersFromTypeToObject[parser_type]
     parser = parser_class()
-    result = parser.parse(files_data, university_name)
+    result = parser.parse(files_data, "program") # пока тестовая строка, потом надо передавать программу с клиента
 
     has_disciplines = any(
         isinstance(value, list) and len(value) > 0 for value in result.values()
@@ -505,6 +509,8 @@ async def add_program_from_files(
     pathStorage = Path(os.getenv('LOCAL_PATH_TO_STORAGE'))
     pathWorkProgram = Path(university_name) / f"{university_name}_{id_user}.json"
     isExistDirectionPath, isExistFilePath = uploadJsonFile(pathStorage / pathWorkProgram, result)
+
+    rdf.add_program(university_name, result)
 
     # проверка наличия/создание папки пользователя в бд
     if not isExistDirectionPath:

@@ -1,4 +1,5 @@
 .DS_Store
+.rdf.license
 storage/
 venv/
 env/
