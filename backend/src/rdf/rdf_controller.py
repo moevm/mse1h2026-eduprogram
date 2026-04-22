@@ -1,6 +1,7 @@
 import pygraphdb
 import requests
 from requests.auth import HTTPBasicAuth
+import traceback
 
 
 class RdfController:
@@ -27,10 +28,16 @@ class RdfController:
             return False
 
     @staticmethod
+    def convert_str_from_rdf_to_standart(data: str):
+        data = data.replace("_", " ")
+        return data.strip()
+
+    @staticmethod
     def update_str_data(data: str):
         specialSymbols = ['~', '.', '-', '!', '$', '&', "'", '(', ')', '*', '+', ',',
-                          ';', '=', '/', '?', '#', '@', '%', '№']
+                          ';', '=', '?', '#', '@', '%', '№']
         data = data.replace(" ", "_")
+        data = data.replace("/", "_")
         for symb in specialSymbols:
             data = data.replace(symb, "\\" + symb)
         data = data.replace("«", "")
@@ -63,7 +70,7 @@ class RdfController:
 
         return response.status_code
 
-    def add_program(self, university: str, programData: dict) -> bool:
+    def add_program(self, university: str, programData: dict, idUser: int) -> bool:
         if not self.db:
             return False
 
@@ -75,7 +82,7 @@ class RdfController:
         programName = list(programData.keys())[0]
 
         programNameClean = self.update_str_data(programName)
-        universityClean = self.update_str_data(university)
+        universityClean = self.update_str_data(university + " id " + str(idUser))
 
         try:
             cur = self.db.cursor()
@@ -240,11 +247,76 @@ class RdfController:
             return []
         return result[1:]
 
-    def get_data_of_university_and_program(self, universityName: str, programName: str) -> list:
-        result = self._select_data_of_university_and_program(universityName, programName).split("\n")
+    def get_data_of_user(self, idUser: int) -> list:
+        result = self._select_data_of_idUser(idUser).split("\n")
         if len(result) <= 1:
             return []
-        return result[1:]
+        programs = set()
+        for row in result:
+            try:
+                subject = row.split(',')[0]
+                if 'http://programs/' in subject:
+                    program = subject.split('/')[-1]
+                    program = program.replace("_", " ")
+                    programs.add(program)
+            except Exception as e:
+                continue
+        return list(programs)
+
+    def get_data_of_university_and_program(self, universityName: str, programName: str, idUser: int) -> dict:
+        result = self._select_data_of_university_and_program(universityName, programName, idUser).split("\n")
+        if len(result) <= 1:
+            return {}
+        jsonProgram = {}
+        for row in result:
+            try:
+                predicat = row.split(',')[1]
+                if 'programs/hasDiscipline' in predicat:
+                    subject = row.split(',')[0]
+                    object = row.split(',')[2]
+                    discipline = self.convert_str_from_rdf_to_standart(object.split('/')[-1])
+                    jsonProgram[discipline] = {"previousDisciplines": [], "topics": {}}
+            except Exception as e:
+                continue
+        print(len(jsonProgram))
+        for row in result:
+            try:
+                predicat = row.split(',')[1]
+                if 'disciplines/previousDiscipline' in predicat:
+                    subject = row.split(',')[0]
+                    object = row.split(',')[2]
+                    disciplineCurrent = self.convert_str_from_rdf_to_standart(subject.split('/')[-1])
+                    disciplinePrevious = self.convert_str_from_rdf_to_standart(object.split('/')[-1])
+                    jsonProgram[disciplinePrevious]["previousDisciplines"].append(disciplineCurrent)
+            except Exception as e:
+                continue
+
+        for row in result:
+            try:
+                predicat = row.split(',')[1]
+                if 'disciplines/hasTopic' in predicat:
+                    subject = row.split(',')[0]
+                    object = row.split(',')[2]
+                    discipline = self.convert_str_from_rdf_to_standart(subject.split('/')[-1])
+                    topic = self.convert_str_from_rdf_to_standart(object.split('/')[-1])
+                    jsonProgram[discipline]["topics"][topic] = {"subtopics": []}
+            except Exception as e:
+                continue
+
+        for row in result:
+            try:
+                predicat = row.split(',')[1]
+                if 'topics/hasSubtopic' in predicat:
+                    subject = row.split(',')[0]
+                    object = row.split(',')[2]
+                    topic = self.convert_str_from_rdf_to_standart(subject.split('/')[-1])
+                    discipline = self.convert_str_from_rdf_to_standart(subject.split('/')[-2])
+                    subtopic = self.convert_str_from_rdf_to_standart(object.split('/')[-1])
+                    jsonProgram[discipline]["topics"][topic]["subtopics"].append(subtopic)
+            except Exception as e:
+                continue
+
+        return {programName: jsonProgram}
 
     def _select_all_data(self) -> str | None:
         if not self.db:
@@ -277,11 +349,11 @@ class RdfController:
             if cur:
                 cur.close()
 
-    def _select_data_of_university_and_program(self, universityName: str, programName: str) -> str | None:
+    def _select_data_of_university_and_program(self, universityName: str, programName: str, idUser: int) -> str | None:
         if not self.db:
             return None
         cur = None
-        universityNameClean = self.update_str_data(universityName)
+        universityNameClean = self.update_str_data(universityName + " id " + str(idUser))
         programNameClean = self.update_str_data(programName)
         try:
             cur = self.db.cursor()
@@ -298,6 +370,37 @@ class RdfController:
                     ?s ?p ?o .
                     FILTER(CONTAINS(STR(?o), "{universityNameClean}/{programNameClean}") || 
                     CONTAINS(STR(?s), "{universityNameClean}/{programNameClean}"))
+                }}
+                """
+            )
+
+            return result
+        except Exception as e:
+            print("Error:", e)
+            return None
+        finally:
+            if cur:
+                cur.close()
+
+    def _select_data_of_idUser(self, idUser: int) -> str | None:
+        if not self.db:
+            return None
+        cur = None
+        try:
+            cur = self.db.cursor()
+            result = cur.execute(
+                f"""
+                PREFIX univ: <http://universities/>
+                PREFIX program: <http://programs/>
+                PREFIX discipline: <http://disciplines/>
+                PREFIX topic: <http://topics/>
+                PREFIX subtopic: <http://subtopic/>
+
+                SELECT ?s ?p ?o
+                WHERE {{
+                    ?s ?p ?o .
+                    FILTER(CONTAINS(STR(?o), "_id_{str(idUser)}") || 
+                    CONTAINS(STR(?s), "_id_{str(idUser)}"))
                 }}
                 """
             )

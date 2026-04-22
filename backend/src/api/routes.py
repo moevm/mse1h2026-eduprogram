@@ -301,7 +301,7 @@ def addProgram(payload: Any = Body(...), db: DataBaseController = Depends(get_db
                 }
             }
 
-        rdf.add_program(name_university, payload)
+        rdf.add_program(name_university, payload, id_user)
         pathWorkProgram = Path(name_university) / name_direction / f"{root_program_name}_{id_user}.json"
         isExistDirectionPath, isExistWorkProgramPath = uploadJsonFile(pathStorage / pathWorkProgram, final_program_json)
 
@@ -384,7 +384,7 @@ def addProgram(payload: Any = Body(...), db: DataBaseController = Depends(get_db
     )
 
 @router.get("/get-programs")
-def getPrograms(userId : int, db: DataBaseController = Depends(get_db)):
+def getPrograms(userId : int, db: DataBaseController = Depends(get_db), rdf: RdfController = Depends(get_rdf)):
     if not db.isConnected():
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -392,6 +392,7 @@ def getPrograms(userId : int, db: DataBaseController = Depends(get_db)):
         )
 
     programs = db.getWorkPrograms(userId)
+    # programs = rdf.get_data_of_user(userId) оставляю предыдущий код, чтобы ничего не ломать
 
     return JSONResponse(
             status_code=status.HTTP_200_OK,
@@ -399,7 +400,8 @@ def getPrograms(userId : int, db: DataBaseController = Depends(get_db)):
         )
 
 @router.get("/show-graph")
-def getCertainProgram(userId: int, pathToProgramFolder: str, db: DataBaseController = Depends(get_db)):
+def getCertainProgram(userId: int, pathToProgramFolder: str, db: DataBaseController = Depends(get_db),
+                      rdf: RdfController = Depends(get_rdf)):
     isProgramExist = db.checkWorkProgram(userId, pathToProgramFolder)
     if not isProgramExist:
         return JSONResponse(
@@ -410,6 +412,12 @@ def getCertainProgram(userId: int, pathToProgramFolder: str, db: DataBaseControl
     pathStorage = Path(os.getenv('LOCAL_PATH_TO_STORAGE'))
     workProgramPath = pathStorage / db.getWorkProgramPath(userId, pathToProgramFolder)
 
+    # Пока так, чтобы работало под текущие запросы клиента
+    if (len(pathToProgramFolder.split('/')) == 2):
+        university, program = pathToProgramFolder.split('/')[0], pathToProgramFolder.split('/')[1]
+    else:
+        university, program = pathToProgramFolder, "program"
+
     if not workProgramPath.is_file():
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -417,9 +425,11 @@ def getCertainProgram(userId: int, pathToProgramFolder: str, db: DataBaseControl
         )
     
     try:
-        with open(workProgramPath, 'r', encoding="utf-8") as fileWorkProgramJson:
-            programData = json.load(fileWorkProgramJson)
-        
+        # with open(workProgramPath, 'r', encoding="utf-8") as fileWorkProgramJson:
+        #     programData = json.load(fileWorkProgramJson)
+
+        programData = rdf.get_data_of_university_and_program(university, program, userId)
+
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content=programData
@@ -510,7 +520,7 @@ async def add_program_from_files(
     pathWorkProgram = Path(university_name) / f"{university_name}_{id_user}.json"
     isExistDirectionPath, isExistFilePath = uploadJsonFile(pathStorage / pathWorkProgram, result)
 
-    rdf.add_program(university_name, result)
+    rdf.add_program(university_name, result, id_user)
 
     # проверка наличия/создание папки пользователя в бд
     if not isExistDirectionPath:
