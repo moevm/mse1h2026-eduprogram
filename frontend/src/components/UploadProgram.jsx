@@ -184,7 +184,9 @@ export default function UploadProgram() {
           body: formData,
         }
       );
-      if (response.ok) alert("Отправлено!");
+      if (response.ok) {
+        alert("Отправлено!");
+      }
       else alert("Ошибка при отправке");
     } catch (error) {
       console.error("Ошибка:", error);
