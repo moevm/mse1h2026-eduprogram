@@ -45,3 +45,8 @@ uvicorn==0.42.0
 webdriver-manager==4.0.2
 websocket-client==1.9.0
 wsproto==1.3.2
+email-validator==2.3.0
+deep-translator==1.11.4
+langdetect==1.0.9
+python-multipart
+pygraphdb

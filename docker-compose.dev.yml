@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: eduprogram-db
+    container_name: eduprogram-db-dev
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-eduprogram}
@@ -16,29 +16,15 @@ services:
       timeout: 5s
       retries: 20
 
-  rdf:
-    image: ontotext/graphdb:11.3.0
-    container_name: eduprogram-rdf
-    restart: unless-stopped
-    environment:
-      - GDB_HEAP_SIZE=2g
-      - GDB_MIN_MEM=1g
-      - GDB_MAX_MEM=2g
-    volumes:
-      - rdf_data:/opt/graphdb/home
-      - ./backend/src/rdf/.rdf.license:/opt/graphdb/home/conf/graphdb.license:ro
-    ports:
-      - "7200:7200"
-
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: eduprogram-backend
+    container_name: eduprogram-backend-dev
     restart: unless-stopped
     environment:
-      APP_HOST: 0.0.0.0
-      APP_PORT: 8000
+      APP_HOST: ${APP_HOST:-0.0.0.0}
+      APP_PORT: ${APP_PORT:-8000}
       DB_NAME: ${POSTGRES_DB:-eduprogram}
       DB_HOST: db
       DB_PORT: 5432
@@ -47,37 +33,43 @@ services:
       DB_MIN_CONN_NUMBER: 1
       DB_MAX_CONN_NUMBER: 10
       LOCAL_PATH_TO_STORAGE: /app/storage
-      GRAPHDB_HOST: rdf
-      GRAPHDB_PORT: ${GRAPHDB_PORT}
-      GRAPHDB_USER: ${GRAPHDB_USER}
-      GRAPHDB_PASSWORD: ${GRAPHDB_PASSWORD}
-      GRAPHDB_REPOSITORY: ${GRAPHDB_REPOSITORY}
     volumes:
+      - ./backend:/app/backend
       - backend_storage:/app/storage
     depends_on:
       db:
         condition: service_healthy
-      rdf:
-        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/docs' % os.getenv('APP_PORT', '8000'), timeout=3)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    command: sh -c "python appendAvailablesParsers.py && python -m uvicorn main:app --host ${APP_HOST:-0.0.0.0} --port ${APP_PORT:-8000} --reload"
     ports:
-      - "8000:8000"
+      - "${APP_PORT:-8000}:8000"
 
   frontend:
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-      args:
-        REACT_APP_API_URL: ${REACT_APP_API_URL:-localhost:8000}
-        REACT_APP_API_URL_ADD_PROGRAM: ${REACT_APP_API_URL_ADD_PROGRAM:-localhost:8000}
-        REACT_APP_API_URL_GET_PROGRAMMS: ${REACT_APP_API_URL_GET_PROGRAMMS:-localhost:8000}
-    container_name: eduprogram-frontend
+    image: node:20-alpine
+    container_name: eduprogram-frontend-dev
     restart: unless-stopped
+    working_dir: /app
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+      REACT_APP_API_URL: ${REACT_APP_API_URL:-localhost:8000}
+      REACT_APP_API_URL_ADD_PROGRAM: ${REACT_APP_API_URL_ADD_PROGRAM:-localhost:8000}
+      REACT_APP_API_URL_GET_PROGRAMMS: ${REACT_APP_API_URL_GET_PROGRAMMS:-localhost:8000}
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
     depends_on:
       - backend
+    command: sh -c "npm install && npm start"
     ports:
-      - "3000:80"
+      - "3000:3000"
 
 volumes:
   db_data:
   backend_storage:
-  rdf_data:
+  frontend_node_modules:

@@ -136,7 +136,7 @@ class ParserSpbPU(BaseParser):
                     if self.__checkText(discipline):
                         listOfPreviousDisciplines.append(discipline.strip())
 
-            resultForAllTopics = {}
+            resultForAllTopics = []
             indexOfEducationalUnits = fullText.find(self.__textForEducationalUnits)
             subText = fullText[indexOfEducationalUnits + len(self.__textForEducationalUnits):]
             subText = subText[:subText.find(self.__endTextForEducationalUnits)]
@@ -156,7 +156,7 @@ class ParserSpbPU(BaseParser):
                         if nameTopic and listOfEducationalUnits and nameTopic[0].isdigit():
                             nameTopic = nameTopic[nameTopic.find(". ") + 2:]
                             nameTopic = re.sub(r'\d+\.', '', nameTopic)
-                            resultForAllTopics[nameTopic.strip()] = listOfEducationalUnits
+                            resultForAllTopics.append({nameTopic.strip(): listOfEducationalUnits})
                     if flagUnits:
                         nameTopic = ""
                         textOfEducationalUnits = ""
