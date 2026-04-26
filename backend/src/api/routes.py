@@ -66,11 +66,12 @@ def getAvailableUniversities(db: DataBaseController = Depends(get_db)):
 async def add_program_from_files(
     files: list[UploadFile] = File(...),
     university_name: str = Form(...),
+    program_name: str = Form(...),
     id_user: int = Form(...),
     db: DataBaseController = Depends(get_db),
     rdf: RdfController = Depends(get_rdf)
 ):
     """Метод добавления учебной программы из файлов."""
     program_service = ProgramService(db, rdf)
-    status_code, content = await program_service.add_program_from_files(files, university_name, id_user)
+    status_code, content = await program_service.add_program_from_files(files, university_name, program_name, id_user)
     return JSONResponse(status_code=status_code, content=content)

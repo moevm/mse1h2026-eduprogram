@@ -386,6 +386,7 @@ class ProgramService:
             self,
             files: List,
             university_name: str,
+            program_name: str,
             id_user: int
     ) -> Tuple[int, Dict[str, Any]]:
         """Метод добавления учебной программы из файлов."""
@@ -417,7 +418,7 @@ class ProgramService:
 
         parser_class = mapParsersFromTypeToObject[parser_type]
         parser = parser_class()
-        result = parser.parse(files_data, "program")
+        result = parser.parse(files_data, program_name)
 
         has_disciplines = any(
             isinstance(value, list) and len(value) > 0 for value in result.values()
