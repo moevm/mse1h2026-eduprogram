@@ -1,51 +1,79 @@
+/* GraphField.css */
+
 .graph-field-shell {
+    position: relative;
     width: 100%;
     height: 100%;
-    position: relative;
+    display: flex;
+    flex-direction: column;
+    /* НЕ ставим overflow: hidden — это может блокировать события */
 }
 
 .graph-field {
+    /* КЛЮЧЕВОЕ: контейнер ОБЯЗАН иметь явные размеры */
+    flex: 1 1 auto;
     width: 100%;
+    min-height: 500px;
+    /* На случай если flex не работает — fallback */
     height: 100%;
+
+    /* НЕ ставим overflow на контейнер cytoscape — он сам управляет скроллом */
     position: relative;
+
     background-color: #f5f5f5;
-    background-image: 
-        linear-gradient(0deg, transparent 24%, rgba(200, 200, 200, 0.1) 25%, rgba(200, 200, 200, 0.1) 26%, transparent 27%, transparent 74%, rgba(200, 200, 200, 0.1) 75%, rgba(200, 200, 200, 0.1) 76%, transparent 77%, transparent),
-        linear-gradient(90deg, transparent 24%, rgba(200, 200, 200, 0.1) 25%, rgba(200, 200, 200, 0.1) 26%, transparent 27%, transparent 74%, rgba(200, 200, 200, 0.1) 75%, rgba(200, 200, 200, 0.1) 76%, transparent 77%, transparent);
+    background-image:
+            linear-gradient(0deg, transparent 24%, rgba(200, 200, 200, 0.1) 25%, rgba(200, 200, 200, 0.1) 26%, transparent 27%, transparent 74%, rgba(200, 200, 200, 0.1) 75%, rgba(200, 200, 200, 0.1) 76%, transparent 77%, transparent),
+            linear-gradient(90deg, transparent 24%, rgba(200, 200, 200, 0.1) 25%, rgba(200, 200, 200, 0.1) 26%, transparent 27%, transparent 74%, rgba(200, 200, 200, 0.1) 75%, rgba(200, 200, 200, 0.1) 76%, transparent 77%, transparent);
     background-size: 50px 50px;
+    border: 1px solid #e0e0e0;
+    border-radius: 0 0 8px 8px;
+
+    /* Гарантируем что touch-события доходят до cytoscape */
+    touch-action: none;
 }
 
-.graph-field__context-menu {
-    position: absolute;
-    z-index: 20;
-    transform: translate(4px, 4px);
-    min-width: 190px;
-    background: #ffffff;
-    border: 1px solid #1d1d1d;
-    border-radius: 10px;
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
-    padding: 6px;
+/* Панель управления */
+.graph-field__expand-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    flex-wrap: wrap;
+    flex-shrink: 0; /* Не сжимаем панель */
 }
 
-.graph-field__context-action {
-    width: 100%;
-    border: none;
-    border-radius: 7px;
-    text-align: left;
-    background: #ffffff;
-    color: #111111;
+.graph-field__expand-btn {
+    padding: 6px 14px;
     font-size: 13px;
-    font-weight: 500;
-    padding: 8px 10px;
+    font-weight: 600;
+    border: 1px solid #bdbdbd;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #333;
     cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+    user-select: none;
 }
 
-.graph-field__context-action:hover:not(:disabled) {
-    background: #111111;
-    color: #ffffff;
+.graph-field__expand-btn:hover {
+    background: #e8e8e8;
+    border-color: #999;
 }
 
-.graph-field__context-action:disabled {
-    color: #929292;
-    cursor: not-allowed;
+.graph-field__expand-btn:active {
+    background: #d5d5d5;
+}
+
+/* Убеждаемся что canvas cytoscape занимает весь контейнер */
+.graph-field canvas {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
 }
