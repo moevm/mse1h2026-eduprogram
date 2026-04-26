@@ -356,7 +356,10 @@ class ProgramService:
                 {"responseMessage": "DataBase connect error!"}
             )
 
-        programs = self.db.getWorkPrograms(user_id)
+        # programs = self.db.getWorkPrograms(user_id)
+        programs = []
+        if self.rdf:
+            programs = self.rdf.get_data_of_user(user_id)
 
         return (
             status.HTTP_200_OK,
