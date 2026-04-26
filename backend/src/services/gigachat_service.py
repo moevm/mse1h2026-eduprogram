@@ -23,7 +23,7 @@ class GigachatService:
     
     #метод получает токен для доступа к api посредством http запроса. данные сохраняются в приватные поля класса
     #если статус код не 200, выбрасывается ошибка
-    def get_access_token (self) -> none:
+    def get_access_token (self)->None:
         url = os.getenv('GIGACHAT_AUTH_URL', "https://ngw.devices.sberbank.ru:9443/api/v2/oauth")
         client_id= os.getenv('GIGACHAT_CLIEND_ID', '')
         scope = os.getenv('GIGACHAT_SCOPE', 'GIGACHAT_API_PERS')
@@ -59,7 +59,7 @@ class GigachatService:
             raise GigachatAuthError(f"Код ошибки: {response_data.get('code')}. Текст ошибки: {response_data.get('message')}");
 
     #проверяет, истек ли срок токена
-    def isExpired (self)->Bool:
+    def isExpired (self)->bool:
         time_ms = time.time() * 1000
         return True if time_ms > self.__expires_at else False
 
