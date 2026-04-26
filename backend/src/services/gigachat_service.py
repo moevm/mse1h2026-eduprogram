@@ -24,11 +24,22 @@ class GigachatService:
     #метод получает токен для доступа к api посредством http запроса. данные сохраняются в приватные поля класса
     #если статус код не 200, выбрасывается ошибка
     def get_access_token (self)->None:
+
+        required_vars = [
+            'GIGACHAT_CLIENT_ID',
+            'GIGACHAT_AUTHORIZATION_KEY',
+            'GIGACHAT_AUTH_CERT_PATH'
+        ]
+        missing = [var for var in required_vars if not os.getenv(var)]
+
+        if missing:
+            raise GigachatAuthError(f"Отсутствуют переменные окружения: {missing}")
+
         url = os.getenv('GIGACHAT_AUTH_URL', "https://ngw.devices.sberbank.ru:9443/api/v2/oauth")
-        client_id= os.getenv('GIGACHAT_CLIEND_ID', '')
+        client_id= os.getenv('GIGACHAT_CLIENT_ID')
         scope = os.getenv('GIGACHAT_SCOPE', 'GIGACHAT_API_PERS')
-        authorization_key = os.getenv('GIGACHAT_AUTHORIZATION_KEY', '')
-        cert_path = os.getenv('GIGACHAT_AUTH_CERT_PATH', '')
+        authorization_key = os.getenv('GIGACHAT_AUTHORIZATION_KEY')
+        cert_path = os.getenv('GIGACHAT_AUTH_CERT_PATH')
 
         headers = {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -61,15 +72,12 @@ class GigachatService:
     #проверяет, истек ли срок токена
     def isExpired (self)->bool:
         time_ms = time.time() * 1000
-        return True if time_ms > self.__expires_at else False
+        return time_ms > self.__expires_at
 
     #метод делает запрос с текстом, заданным в message. Если запрос возвращает 200, из метода вернется ответ, иначе выбросится ошибка
     def query(self, context: str, message: str, max_tokens: int)->str:
         if self.isExpired():
-            try:
-                self.get_access_token()
-            except GigachatAuthError as ex:
-                raise ex
+            self.get_access_token()
         
         url = os.getenv('GIGACHAT_QUERY_URL', "https://gigachat.devices.sberbank.ru/api/v1/chat/completions")
         cert_path = os.getenv('GIGACHAT_QUERY_CERT_PATH', '')
