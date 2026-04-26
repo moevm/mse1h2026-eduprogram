@@ -109,7 +109,15 @@ class GigachatService:
         }
 
         response = requests.post(url, headers=headers, json=payload, verify=cert_path)
+        status_code = response.status_code
 
+        if status_code == HTTPStatus.UNAUTHORIZED:
+            self.get_access_token()
+        headers = {
+            'Authorization': f'Bearer {self.__access_token}',
+            'Content-Type': 'application/json'
+        }
+        response = requests.post(url, headers=headers, json=payload, verify=cert_path)
         status_code = response.status_code
 
         try:
