@@ -1,484 +1,514 @@
-import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
+import React, { useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import './GraphField.css';
 
 cytoscape.use(dagre);
 
-const applyGraphVisibility = (cy, selectedNodeIds, hiddenNodeIds) => {
-  if (!cy) return;
+const GraphField = forwardRef(({
+                                   data,
+                                   selectedNodeIds = [],
+                                   hiddenNodeIds = [],
+                                   expandedNodes = new Set(),
+                                   childrenMap = {},
+                                   nodeTypeMap = {},
+                                   onToggleExpand,
+                                   onToggleNodeSelection,
+                                   onSelectionChange
+                               }, ref) => {
+    const containerRef = useRef(null);
+    const cyRef = useRef(null);
+    const ignoreTapCloseUntilRef = useRef(0);
+    const selectedNodeIdsRef = useRef(selectedNodeIds);
+    const onToggleNodeSelectionRef = useRef(onToggleNodeSelection);
+    const onSelectionChangeRef = useRef(onSelectionChange);
+    const onToggleExpandRef = useRef(onToggleExpand);
+    const layoutRunningRef = useRef(false);
 
-  cy.batch(() => {
-    cy.nodes().removeClass('highlighted').style('display', 'element');
-    cy.edges().style('display', 'element');
-    cy.nodes().unselect();
+    const expandedNodesRef = useRef(expandedNodes);
+    const childrenMapRef = useRef(childrenMap);
+    const nodeTypeMapRef = useRef(nodeTypeMap);
 
-    selectedNodeIds.forEach((nodeId) => {
-      const node = cy.getElementById(nodeId);
-      if (node.nonempty()) {
-        node.addClass('highlighted');
-        node.select();
-      }
-    });
+    useEffect(() => { selectedNodeIdsRef.current = selectedNodeIds; }, [selectedNodeIds]);
+    useEffect(() => { onToggleNodeSelectionRef.current = onToggleNodeSelection; }, [onToggleNodeSelection]);
+    useEffect(() => { onSelectionChangeRef.current = onSelectionChange; }, [onSelectionChange]);
+    useEffect(() => { onToggleExpandRef.current = onToggleExpand; }, [onToggleExpand]);
+    useEffect(() => { expandedNodesRef.current = expandedNodes; }, [expandedNodes]);
+    useEffect(() => { childrenMapRef.current = childrenMap; }, [childrenMap]);
+    useEffect(() => { nodeTypeMapRef.current = nodeTypeMap; }, [nodeTypeMap]);
 
-    hiddenNodeIds.forEach((nodeId) => {
-      const node = cy.getElementById(nodeId);
-      if (node.nonempty()) {
-        node.style('display', 'none');
-        node.connectedEdges().style('display', 'none');
-      }
-    });
-  });
-};
-
-const GraphField = forwardRef(({ 
-  data, 
-  selectedNodeIds = [], 
-  hiddenNodeIds = [], 
-  onHideSelected, 
-  hideButtonText = 'Скрыть выбранные', 
-  keepOnlyButtonText = 'Оставить только выделенные и потомков', 
-  onKeepOnlySelectedAndDescendants, 
-  onHideSubtopicsForDisciplines, 
-  onHideTopicsAndSubtopicsForDisciplines, 
-  areAllSelectedDisciplines = false, 
-  onToggleNodeSelection, 
-  onSelectionChange 
-}, ref) => {
-  const shellRef = useRef(null);
-  const containerRef = useRef(null);
-  const cyRef = useRef(null);
-  const ignoreTapCloseUntilRef = useRef(0);
-  const selectedNodeIdsRef = useRef(selectedNodeIds);
-  const onToggleNodeSelectionRef = useRef(onToggleNodeSelection);
-  const onSelectionChangeRef = useRef(onSelectionChange);
-  const [contextMenu, setContextMenu] = useState({ open: false, x: 0, y: 0 });
-
-  useEffect(() => {
-    selectedNodeIdsRef.current = selectedNodeIds;
-  }, [selectedNodeIds]);
-
-  useEffect(() => {
-    onToggleNodeSelectionRef.current = onToggleNodeSelection;
-  }, [onToggleNodeSelection]);
-
-  useEffect(() => {
-    onSelectionChangeRef.current = onSelectionChange;
-  }, [onSelectionChange]);
-
-  const closeContextMenu = () => {
-    setContextMenu((prev) => (prev.open ? { ...prev, open: false } : prev));
-  };
-
-  const openContextMenu = (clientX, clientY) => {
-    if (!selectedNodeIdsRef.current.length) {
-      closeContextMenu();
-      return;
-    }
-
-    // Задержка, чтобы клик по узлу не закрыл меню сразу после ПКМ
-    ignoreTapCloseUntilRef.current = Date.now() + 220;
-
-    const shell = shellRef.current;
-    if (!shell) return;
-
-    const rect = shell.getBoundingClientRect();
-    setContextMenu({
-      open: true,
-      x: clientX - rect.left,
-      y: clientY - rect.top
-    });
-  };
-
-  useImperativeHandle(ref, () => ({
-    exportPNG: () => {
-      if (cyRef.current) {
-        const png = cyRef.current.png();
-        const link = document.createElement('a');
-        link.download = 'graph.png';
-        link.href = png;
-        link.click();
-      }
-    },
-    exportPDF: () => {
-      if (cyRef.current) {
-        const png = cyRef.current.png({ full: true, maxWidth: 1920, maxHeight: 1080 });
-        const link = document.createElement('a');
-        link.download = 'graph.pdf';
-        link.href = png;
-        link.click();
-      }
-    }
-  }));
-
-  useEffect(() => {
-    if (!containerRef.current || !data) return;
-
-    if (cyRef.current) {
-      cyRef.current.destroy();
-      cyRef.current = null;
-    }
-
-    const allSubjects = Object.keys(data);
-    const nodesSet = new Set(allSubjects);
-
-    allSubjects.forEach(subject => {
-      const subjectData = data[subject];
-      const predecessors = subjectData.предметы_до || [];
-      const successors = subjectData.предметы_после || [];
-      
-      predecessors.forEach(p => nodesSet.add(p));
-      successors.forEach(s => nodesSet.add(s));
-    });
-
-    const nodes = Array.from(nodesSet).map(name => ({
-      data: {
-        id: name,
-        label: name,
-        isMain: allSubjects.includes(name) ? 'true' : 'false',
-        nodeType: 'discipline'
-      }
+    useImperativeHandle(ref, () => ({
+        exportPNG: () => {
+            if (cyRef.current) {
+                const png = cyRef.current.png();
+                const link = document.createElement('a');
+                link.download = 'graph.png';
+                link.href = png;
+                link.click();
+            }
+        },
+        exportPDF: () => {
+            if (cyRef.current) {
+                const png = cyRef.current.png({ full: true, maxWidth: 1920, maxHeight: 1080 });
+                const link = document.createElement('a');
+                link.download = 'graph.pdf';
+                link.href = png;
+                link.click();
+            }
+        }
     }));
 
-    const edges = [];
-    const edgesSet = new Set();
+    const computeVisibleNodeIds = useCallback((expanded, hidden) => {
+        const visible = new Set();
+        const cm = childrenMapRef.current;
+        const ntm = nodeTypeMapRef.current;
 
-    allSubjects.forEach(subject => {
-      const subjectData = data[subject];
-      const predecessors = subjectData.предметы_до || [];
-      const successors = subjectData.предметы_после || [];
-
-      predecessors.forEach(p => {
-        const edgeKey = `${p}->${subject}`;
-        if (!edgesSet.has(edgeKey)) {
-          edges.push({ data: { source: p, target: subject } });
-          edgesSet.add(edgeKey);
-        }
-      });
-
-      successors.forEach(s => {
-        const edgeKey = `${subject}->${s}`;
-        if (!edgesSet.has(edgeKey)) {
-          edges.push({ data: { source: subject, target: s } });
-          edgesSet.add(edgeKey);
-        }
-      });
-
-      const topics = Array.isArray(subjectData.темы) ? subjectData.темы : [];
-      topics.forEach((topic) => {
-        const topicName = topic?.name;
-        if (!topicName) return;
-
-        const topicId = `topic::${subject}::${topicName}`;
-        nodes.push({
-          data: {
-            id: topicId,
-            label: topicName,
-            isMain: 'false',
-            nodeType: 'topic'
-          }
+        Object.keys(ntm).forEach((nodeId) => {
+            if (ntm[nodeId] === 'discipline') {
+                visible.add(nodeId);
+            }
         });
 
-        const subjectToTopicEdge = `${subject}->${topicId}`;
-        if (!edgesSet.has(subjectToTopicEdge)) {
-          edges.push({ data: { source: subject, target: topicId } });
-          edgesSet.add(subjectToTopicEdge);
-        }
-
-        const subtopics = Array.isArray(topic.subtopics) ? topic.subtopics : [];
-        subtopics.forEach((subtopic) => {
-          if (!subtopic) return;
-
-          const subtopicId = `subtopic::${subject}::${topicName}::${subtopic}`;
-          nodes.push({
-            data: {
-              id: subtopicId,
-              label: subtopic,
-              isMain: 'false',
-              nodeType: 'subtopic'
-            }
-          });
-
-          const topicToSubtopicEdge = `${topicId}->${subtopicId}`;
-          if (!edgesSet.has(topicToSubtopicEdge)) {
-            edges.push({ data: { source: topicId, target: subtopicId } });
-            edgesSet.add(topicToSubtopicEdge);
-          }
+        expanded.forEach((parentId) => {
+            const children = cm[parentId] || [];
+            children.forEach((childId) => {
+                visible.add(childId);
+            });
         });
-      });
-    });
 
-    try {
-      const cy = cytoscape({
-        container: containerRef.current,
-        elements: { nodes, edges },
-        boxSelectionEnabled: true,
-        selectionType: 'additive',
-        style: [
-          {
-            selector: 'node',
-            style: {
-              'background-color': '#ffffff',
-              'label': 'data(label)',
-              'shape': 'ellipse',
-              'width': 140,
-              'height': 50,
-              'font-size': '13px',
-              'text-valign': 'center',
-              'text-halign': 'center',
-              'border-width': 2,
-              'border-color': '#000000',
-              'color': '#000000',
-              'font-weight': 600,
-              'text-wrap': 'wrap',
-              'text-max-width': 120
-            }
-          },
-          {
-            selector: 'node[isMain = "true"]',
-            style: {
-              'background-color': '#8B4545',
-              'border-color': '#5D2E2E',
-              'border-width': 3,
-              'color': '#ffffff',
-              'font-weight': 'bold'
-            }
-          },
-          {
-            selector: 'node[nodeType = "topic"]',
-            style: {
-              'background-color': '#E3F2FD',
-              'border-color': '#1565C0',
-              'color': '#0D47A1',
-              'shape': 'round-rectangle',
-              'width': 130,
-              'height': 44,
-            }
-          },
-          {
-            selector: 'node[nodeType = "subtopic"]',
-            style: {
-              'background-color': '#E8F5E9',
-              'border-color': '#2E7D32',
-              'color': '#1B5E20',
-              'shape': 'round-rectangle',
-              'width': 120,
-              'height': 40,
-              'font-size': '12px'
-            }
-          },
-          {
-            selector: 'node.highlighted',
-            style: {
-              'border-color': '#FF9800',
-              'border-width': 5,
-              'overlay-opacity': 0,
-              'z-index': 999
-            }
-          },
-          {
-            selector: 'edge',
-            style: {
-              'width': 2,
-              'line-color': '#000000',
-              'target-arrow-color': '#000000',
-              'target-arrow-shape': 'triangle',
-              'curve-style': 'bezier',
-              'font-size': '11px',
-              'text-rotation': 'autorotate',
-              'color': '#666'
-            }
-          }
-        ],
-        layout: { name: 'dagre', rankDir: 'TB', spacingFactor: 1.5, animate: true }
-      });
+        hidden.forEach((id) => visible.delete(id));
 
-      cyRef.current = cy;
+        return visible;
+    }, []);
 
-      setTimeout(() => {
+    const applyVisibility = useCallback((cy, expanded, selected, hidden) => {
+        if (!cy || cy.destroyed()) return;
+        if (layoutRunningRef.current) return;
+
+        const visibleIds = computeVisibleNodeIds(expanded, new Set(hidden));
+
+        cy.batch(() => {
+            cy.nodes().style('display', 'none');
+            cy.edges().style('display', 'none');
+
+            visibleIds.forEach((nodeId) => {
+                const node = cy.getElementById(nodeId);
+                if (node.nonempty()) {
+                    node.style('display', 'element');
+                }
+            });
+
+            cy.edges().forEach((edge) => {
+                const srcId = edge.data('source');
+                const tgtId = edge.data('target');
+                if (visibleIds.has(srcId) && visibleIds.has(tgtId)) {
+                    edge.style('display', 'element');
+                }
+            });
+
+            cy.nodes().removeClass('highlighted expanded');
+            cy.nodes().unselect();
+
+            selected.forEach((nodeId) => {
+                const node = cy.getElementById(nodeId);
+                if (node.nonempty() && visibleIds.has(nodeId)) {
+                    node.addClass('highlighted');
+                    node.select();
+                }
+            });
+
+            expanded.forEach((nodeId) => {
+                const node = cy.getElementById(nodeId);
+                if (node.nonempty() && visibleIds.has(nodeId)) {
+                    node.addClass('expanded');
+                }
+            });
+        });
+
+        const visibleNodes = cy.nodes().filter(n => n.style('display') === 'element');
+        const visibleEdges = cy.edges().filter(e => e.style('display') === 'element');
+        const visibleElements = visibleNodes.union(visibleEdges);
+
+        if (visibleNodes.length === 0) return;
+
+        layoutRunningRef.current = true;
+
+        const layout = visibleElements.layout({
+            name: 'dagre',
+            rankDir: 'TB',
+            spacingFactor: 1.4,
+            animate: true,
+            animationDuration: 300,
+            animationEasing: 'ease-in-out',
+            nodeDimensionsIncludeLabels: true,
+            rankSep: 80,
+            nodeSep: 40,
+            edgeSep: 20,
+            fit: false
+        });
+
+        layout.on('layoutstop', () => {
+            layoutRunningRef.current = false;
+            if (cy && !cy.destroyed()) {
+                cy.resize();
+                cy.animate({
+                    fit: { eles: visibleNodes, padding: 40 },
+                    duration: 200,
+                    easing: 'ease-in-out'
+                });
+            }
+        });
+
+        layout.run();
+    }, [computeVisibleNodeIds]);
+
+    // ========== СОЗДАНИЕ ГРАФА ==========
+    useEffect(() => {
+        if (!containerRef.current || !data) return;
+
         if (cyRef.current) {
-          cyRef.current.resize();
-          cyRef.current.fit();
-        }
-      }, 100);
-
-      cy.on('tap', 'node', (event) => {
-        if (Date.now() < ignoreTapCloseUntilRef.current) return;
-
-        const nativeEvent = event.originalEvent;
-        if (nativeEvent && nativeEvent.button !== 0) return;
-
-        closeContextMenu();
-        const tappedNode = event.target;
-        const nodeData = tappedNode.data();
-
-        if (onToggleNodeSelectionRef.current) {
-          onToggleNodeSelectionRef.current(nodeData.id);
-        }
-      });
-
-      cy.on('tap', (tapEvent) => {
-        if (Date.now() < ignoreTapCloseUntilRef.current) return;
-
-        const nativeEvent = tapEvent.originalEvent;
-        if (nativeEvent && nativeEvent.button !== 0) return;
-
-        closeContextMenu();
-      });
-
-      cy.on('cxttap', (event) => {
-        if (!selectedNodeIdsRef.current.length) {
-          closeContextMenu();
-          return;
+            cyRef.current.destroy();
+            cyRef.current = null;
         }
 
-        const nativeEvent = event.originalEvent;
-        if (!nativeEvent) return;
+        layoutRunningRef.current = false;
 
-        nativeEvent.preventDefault();
-        openContextMenu(nativeEvent.clientX, nativeEvent.clientY);
-      });
+        const allSubjects = Object.keys(data);
+        const nodesSet = new Set(allSubjects);
 
-      const syncSelectedFromGraph = () => {
-        if (!onSelectionChangeRef.current) return;
-        const selectedIds = cy.nodes(':selected').map((node) => node.id());
-        onSelectionChangeRef.current(selectedIds);
-      };
+        allSubjects.forEach(subject => {
+            const subjectData = data[subject];
+            const predecessors = subjectData.предметы_до || [];
+            const successors = subjectData.предметы_после || [];
+            predecessors.forEach(p => nodesSet.add(p));
+            successors.forEach(s => nodesSet.add(s));
+        });
 
-      cy.on('boxend', syncSelectedFromGraph);
-      cy.on('select unselect', 'node', syncSelectedFromGraph);
+        const nodes = [];
+        const edges = [];
+        const edgesSet = new Set();
 
-      applyGraphVisibility(cy, selectedNodeIds, hiddenNodeIds);
-    } catch (err) {
-      console.error('Error creating cytoscape graph:', err);
-    }
+        Array.from(nodesSet).forEach(name => {
+            nodes.push({
+                data: {
+                    id: name,
+                    label: name,
+                    isMain: allSubjects.includes(name) ? 'true' : 'false',
+                    nodeType: 'discipline',
+                    hasChildren: 'false'
+                }
+            });
+        });
 
-    return () => {
-      if (cyRef.current) {
-        cyRef.current.destroy();
-        cyRef.current = null;
-      }
-    };
-  }, [data]);
+        allSubjects.forEach(subject => {
+            const subjectData = data[subject];
+            const predecessors = subjectData.предметы_до || [];
+            const successors = subjectData.предметы_после || [];
 
-  useEffect(() => {
-    if (!cyRef.current) return;
-    applyGraphVisibility(cyRef.current, selectedNodeIds, hiddenNodeIds);
-  }, [selectedNodeIds, hiddenNodeIds]);
+            predecessors.forEach(p => {
+                const edgeKey = `$${p}->$${subject}`;
+                if (!edgesSet.has(edgeKey)) {
+                    edges.push({ data: { source: p, target: subject, edgeType: 'discipline' } });
+                    edgesSet.add(edgeKey);
+                }
+            });
 
-  useEffect(() => {
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        closeContextMenu();
-      }
-    };
+            successors.forEach(s => {
+                const edgeKey = `$${subject}->$${s}`;
+                if (!edgesSet.has(edgeKey)) {
+                    edges.push({ data: { source: subject, target: s, edgeType: 'discipline' } });
+                    edgesSet.add(edgeKey);
+                }
+            });
 
-    const handleGlobalPointerDown = (event) => {
-      const shell = shellRef.current;
-      if (!shell) return;
+            const topics = Array.isArray(subjectData.темы) ? subjectData.темы : [];
+            topics.forEach((topic) => {
+                const topicName = topic?.name;
+                if (!topicName) return;
 
-      if (!shell.contains(event.target)) {
-        closeContextMenu();
-      }
-    };
+                const topicId = `topic::$${subject}::$${topicName}`;
+                nodes.push({
+                    data: {
+                        id: topicId,
+                        label: topicName,
+                        isMain: 'false',
+                        nodeType: 'topic',
+                        parentDiscipline: subject,
+                        hasChildren: 'false'
+                    }
+                });
 
-    window.addEventListener('keydown', handleEscape);
-    window.addEventListener('pointerdown', handleGlobalPointerDown);
+                const subjectToTopicEdge = `$${subject}->$${topicId}`;
+                if (!edgesSet.has(subjectToTopicEdge)) {
+                    edges.push({ data: { source: subject, target: topicId, edgeType: 'hierarchy' } });
+                    edgesSet.add(subjectToTopicEdge);
+                }
 
-    return () => {
-      window.removeEventListener('keydown', handleEscape);
-      window.removeEventListener('pointerdown', handleGlobalPointerDown);
-    };
-  }, []);
+                const subtopics = Array.isArray(topic.subtopics) ? topic.subtopics : [];
+                subtopics.forEach((subtopic) => {
+                    if (!subtopic) return;
 
-  const handleShellContextMenu = (event) => {
-    event.preventDefault();
-    if (!selectedNodeIdsRef.current.length) {
-      closeContextMenu();
-      return;
-    }
-    openContextMenu(event.clientX, event.clientY);
-  };
+                    const subtopicId = `subtopic::$${subject}::$${topicName}::${subtopic}`;
+                    nodes.push({
+                        data: {
+                            id: subtopicId,
+                            label: subtopic,
+                            isMain: 'false',
+                            nodeType: 'subtopic',
+                            parentTopic: topicId,
+                            parentDiscipline: subject,
+                            hasChildren: 'false'
+                        }
+                    });
 
-  const handleContextActionClick = (event) => {
-    event.stopPropagation();
-    if (!selectedNodeIds.length) return;
-    onHideSelected?.();
-    closeContextMenu();
-  };
+                    const topicToSubtopicEdge = `$${topicId}->$${subtopicId}`;
+                    if (!edgesSet.has(topicToSubtopicEdge)) {
+                        edges.push({ data: { source: topicId, target: subtopicId, edgeType: 'hierarchy' } });
+                        edgesSet.add(topicToSubtopicEdge);
+                    }
+                });
+            });
+        });
 
-  const handleKeepOnlyClick = (event) => {
-    event.stopPropagation();
-    if (!selectedNodeIds.length) return;
-    onKeepOnlySelectedAndDescendants?.();
-    closeContextMenu();
-  };
+        // Проставляем hasChildren по childrenMap из пропсов
+        const cm = childrenMapRef.current;
+        Object.keys(cm).forEach((parentId) => {
+            if (cm[parentId] && cm[parentId].length > 0) {
+                const nodeData = nodes.find(n => n.data.id === parentId);
+                if (nodeData) {
+                    nodeData.data.hasChildren = 'true';
+                }
+            }
+        });
 
-  const handleHideSubtopicsClick = (event) => {
-    event.stopPropagation();
-    if (!areAllSelectedDisciplines) return;
-    onHideSubtopicsForDisciplines?.();
-    closeContextMenu();
-  };
+        try {
+            const cy = cytoscape({
+                container: containerRef.current,
+                elements: { nodes, edges },
+                boxSelectionEnabled: true,
+                selectionType: 'additive',
+                userZoomingEnabled: true,
+                userPanningEnabled: true,
+                zoomingEnabled: true,
+                panningEnabled: true,
+                minZoom: 0.1,
+                maxZoom: 5,
+                wheelSensitivity: 0.3,
 
-  const handleHideTopicsAndSubtopicsClick = (event) => {
-    event.stopPropagation();
-    if (!areAllSelectedDisciplines) return;
-    onHideTopicsAndSubtopicsForDisciplines?.();
-    closeContextMenu();
-  };
+                style: [
+                    // В секции style cytoscape, заменяем базовый стиль node:
 
-  const handleContextMenuClick = (event) => {
-    event.stopPropagation();
-  };
+                    {
+                        selector: 'node',
+                        style: {
+                            'background-color': '#ffffff',
+                            'label': 'data(label)',
+                            'shape': 'round-rectangle',
+                            'width': 'label',
+                            'height': 'label',
+                            'padding': '12px',
+                            'font-size': '12px',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'color': '#000000',
+                            'font-weight': 600,
+                            'text-wrap': 'wrap',
+                            'text-max-width': 200,
+                            'transition-property': 'background-color',
+                            'transition-duration': '0.2s'
+                        }
+                    },
+                    {
+                        selector: 'node[isMain = "true"]',
+                        style: {
+                            'background-color': '#000000',
+                            'color': '#ffffff',
+                            'border-color': '#595959',
+                            'border-width': '2px',
+                            'font-weight': 'normal',
+                            'font-size': '14px',
+                            'line-height': 2,
+                            'padding': '12px',
+                            'text-max-width': 200,
+                        }
+                    },
+                    {
+                        selector: 'node[nodeType = "discipline"][isMain = "false"]',
+                        style: {
+                            'background-color': '#000000',
+                            'color': '#ffffff',
+                            'border-color': '#959595',
+                            'border-width': '3px',
+                            'font-weight': 'normal',
+                            'font-size': '14px',
+                            'line-height': 2,
+                            'padding': '12px',
+                            'text-max-width': 200,
+                        }
+                    },
+                    {
+                        selector: 'node[nodeType = "topic"]',
+                        style: {
+                            'background-color': '#2494ff',
+                            'color': '#ffffff',
+                            'border-color': '#185a98',
+                            'border-width': '3px',
+                            'font-weight': 'normal',
+                            'font-size': '14px',
+                            'line-height': 2,
+                            'padding': '12px',
+                            'text-max-width': 200
+                        }
+                    },
+                    {
+                        selector: 'node[nodeType = "subtopic"]',
+                        style: {
+                            'background-color': '#75b178',
+                            'color': '#ffffff',
+                            'border-color': '#3f6040',
+                            'border-width': '3px',
+                            'font-weight': 'normal',
+                            'font-size': '14px',
+                            'line-height': 2,
+                            'padding': '12px',
+                            'text-max-width': 200
+                        }
+                    },
+                    {
+                        selector: 'node.expanded',
+                        style: {
+                            'border-color': '#42444a',
+                            'border-width': 2,
+                            'border-style': 'solid'
+                        }
+                    },
+                    {
+                        selector: 'node.highlighted',
+                        style: {
+                            'border-color': '#FF9800',
+                            'border-width': 5,
+                            'overlay-opacity': 0,
+                            'z-index': 999
+                        }
+                    },
+                    {
+                        selector: 'edge[edgeType = "discipline"]',
+                        style: {
+                            'width': 2.5,
+                            'line-color': '#555555',
+                            'target-arrow-color': '#555555',
+                            'target-arrow-shape': 'triangle',
+                            'curve-style': 'bezier',
+                            'arrow-scale': 1.2
+                        }
+                    },
+                    {
+                        selector: 'edge[edgeType = "hierarchy"]',
+                        style: {
+                            'width': 1.5,
+                            'line-color': '#90A4AE',
+                            'target-arrow-color': '#90A4AE',
+                            'target-arrow-shape': 'triangle',
+                            'curve-style': 'bezier',
+                            'line-style': 'dashed',
+                            'arrow-scale': 0.9
+                        }
+                    }
+                ],
+                layout: { name: 'preset' }
+            });
 
-  return (
-    <div ref={shellRef} className="graph-field-shell" onContextMenu={handleShellContextMenu}>
-      <div ref={containerRef} className="graph-field" />
-      {contextMenu.open && (
-        <div
-          className="graph-field__context-menu"
-          style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
-          onClick={handleContextMenuClick}
-        >
-          <button
-            type="button"
-            className="graph-field__context-action"
-            onClick={handleContextActionClick}
-            disabled={!selectedNodeIds.length}
-          >
-            {hideButtonText}
-          </button>
-          <button
-            type="button"
-            className="graph-field__context-action"
-            onClick={handleKeepOnlyClick}
-            disabled={!selectedNodeIds.length}
-          >
-            {keepOnlyButtonText}
-          </button>
-          {areAllSelectedDisciplines && (
-            <>
-              <button
-                type="button"
-                className="graph-field__context-action"
-                onClick={handleHideSubtopicsClick}
-              >
-                Скрыть все подтемы
-              </button>
-              <button
-                type="button"
-                className="graph-field__context-action"
-                onClick={handleHideTopicsAndSubtopicsClick}
-              >
-                Скрыть все темы и подтемы
-              </button>
-            </>
-          )}
+            cyRef.current = cy;
+
+            // ===== ОБРАБОТКА ЛЕВОГО КЛИКА =====
+            cy.on('tap', 'node', (event) => {
+                if (Date.now() < ignoreTapCloseUntilRef.current) return;
+
+                const nativeEvent = event.originalEvent;
+                if (nativeEvent && nativeEvent.button !== 0) return;
+
+                const tappedNode = event.target;
+                const nodeId = tappedNode.data('id');
+                const nodeType = tappedNode.data('nodeType');
+                const hasChildren = tappedNode.data('hasChildren') === 'true';
+
+                if (hasChildren && (nodeType === 'discipline' || nodeType === 'topic')) {
+                    if (onToggleExpandRef.current) {
+                        onToggleExpandRef.current(nodeId);
+                    }
+                }
+
+                if (onToggleNodeSelectionRef.current) {
+                    onToggleNodeSelectionRef.current(nodeId);
+                }
+            });
+
+            // ===== СИНХРОНИЗАЦИЯ ВЫДЕЛЕНИЯ =====
+            const syncSelectedFromGraph = () => {
+                if (!onSelectionChangeRef.current) return;
+                const selectedIds = cy.nodes(':selected').map((node) => node.id());
+                onSelectionChangeRef.current(selectedIds);
+            };
+
+            cy.on('boxend', syncSelectedFromGraph);
+            cy.on('select unselect', 'node', syncSelectedFromGraph);
+
+            // ===== RESIZE OBSERVER =====
+            const resizeObserver = new ResizeObserver(() => {
+                if (cyRef.current && !cyRef.current.destroyed()) {
+                    cyRef.current.resize();
+                }
+            });
+            resizeObserver.observe(containerRef.current);
+
+            // Первоначальная отрисовка
+            requestAnimationFrame(() => {
+                if (cy && !cy.destroyed()) {
+                    cy.resize();
+                    applyVisibility(cy, expandedNodesRef.current, selectedNodeIdsRef.current, hiddenNodeIds);
+                }
+            });
+
+            return () => {
+                resizeObserver.disconnect();
+                if (cyRef.current) {
+                    cyRef.current.destroy();
+                    cyRef.current = null;
+                }
+            };
+
+        } catch (err) {
+            console.error('Error creating cytoscape graph:', err);
+        }
+
+        return () => {
+            if (cyRef.current) {
+                cyRef.current.destroy();
+                cyRef.current = null;
+            }
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data]);
+
+    // ===== РЕАКЦИЯ НА ИЗМЕНЕНИЕ expandedNodes =====
+    useEffect(() => {
+        if (!cyRef.current || cyRef.current.destroyed()) return;
+        applyVisibility(cyRef.current, expandedNodes, selectedNodeIds, hiddenNodeIds);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [expandedNodes]);
+
+    // ===== РЕАКЦИЯ НА ИЗМЕНЕНИЕ selectedNodeIds / hiddenNodeIds =====
+    useEffect(() => {
+        if (!cyRef.current || cyRef.current.destroyed()) return;
+        applyVisibility(cyRef.current, expandedNodes, selectedNodeIds, hiddenNodeIds);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedNodeIds, hiddenNodeIds]);
+
+    return (
+        <div className="graph-field-shell">
+            <div ref={containerRef} className="graph-field" />
         </div>
-      )}
-    </div>
-  );
+    );
 });
 
 export default GraphField;
