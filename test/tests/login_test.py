@@ -4,6 +4,7 @@ from pytest import mark
 
 
 @mark.order(2)
+@mark.client
 class TestLogin(BaseTest):
     def test_login(self):
         self.login_page.open()
