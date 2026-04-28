@@ -5,9 +5,23 @@ from pytest import mark
 
 @mark.api
 class TestDefault(BaseTest):
+    @mark.order(1)
     def test_registration(self):
-        self.api_users.register()
-        self.api_users.register_test_user()
+        response = self.api_users.register()
+        assert response.status_code == 201, response.json()
 
+        response = self.api_users.register_test_user()
+        assert response.json()
+
+    @mark.order(2)
     def test_login(self):
-        self.api_users.login()
+        response = self.api_users.login()  
+
+        assert response.status_code == 200, response.json().get("id")
+
+    @mark.order(3)
+    def test_get_available_universities(self):
+        response = self.api_users.get_available_universities()
+
+        assert response.status_code == 200
+        assert set(response.json().get("available-universities")) == self.data.universities

@@ -17,21 +17,34 @@ class DefaultAPI:
             url=self.endopints.registration,
             json=self.payloads.random_user_info
         )
-        assert response.status_code == 201, response.json()
+        return response
 
     def register_test_user(self):
         response = requests.post(
             url=self.endopints.registration,
             json=self.payloads.test_user_info
         )
-        assert response.json()
         self.user_id = response.json().get("id")
+
+        return response
 
     def login(self):
         response = requests.post(
             url=self.endopints.login,
             json=self.payloads.test_user_info
         )
-        assert response.status_code == 200, response.json().get("id")
+        return response
 
-    
+    def get_available_universities(self):
+        response = requests.get(
+            url=self.endopints.get_available_universities
+        )
+
+        return response
+
+    def get_programs(self):
+        response = requests.get(
+            usl=self.endopints.get_programs,
+            headers = {"userId" : self.user_id}
+        )
+        return response

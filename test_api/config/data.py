@@ -9,3 +9,4 @@ class Data:
     login = os.getenv("LOGIN")
     password = os.getenv("PASSWORD")
     user_id = os.getenv("USERID")
+    universities = {"ГУАП", "СПБГЭТУ ЛЭТИ", "МПУ", "МТУСИ", "СПБПУ"}
