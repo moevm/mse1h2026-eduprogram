@@ -261,7 +261,7 @@ class ProgramService:
                 }
 
             if self.rdf:
-                self.rdf.add_program(name_university, payload)
+                self.rdf.add_program(name_university, payload, id_user)
 
             path_work_program = Path(name_university) / name_direction / f"{root_program_name}_{id_user}.json"
             is_exist_direction_path, is_exist_work_program_path = self._upload_json_file(
@@ -434,7 +434,7 @@ class ProgramService:
                                                                              result)
 
         if self.rdf:
-            self.rdf.add_program(university_name, result)
+            self.rdf.add_program(university_name, result, id_user)
 
         if not is_exist_direction_path:
             add_result = self.db.addUserFolder(id_user, str(path_work_program.parent))
