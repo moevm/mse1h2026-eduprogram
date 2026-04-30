@@ -4,6 +4,7 @@ from pytest import mark
 
 
 @mark.order(3)
+@mark.client
 class TestAddYourProgram(BaseTest):
     def test_university_list(self, login_user, university_names):
         self.main_page.open()
