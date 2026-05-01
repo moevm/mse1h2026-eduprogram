@@ -39,7 +39,7 @@ class GraphService:
 
             program_data = None
             if self.rdf:
-                program_data = self.rdf.get_data_of_university_and_program("", path_to_program_folder, user_id)
+                program_data = self.rdf.get_data_of_university_and_program("frontend", path_to_program_folder, user_id)
             return (
                 status.HTTP_200_OK,
                 program_data
