@@ -39,17 +39,18 @@ def addProgram(payload: Any = Body(...), db: DataBaseController = Depends(get_db
 
 
 @router.get("/get-programs")
-def getPrograms(userId: int, db: DataBaseController = Depends(get_db)):
+def getPrograms(userId: int, db: DataBaseController = Depends(get_db), rdf: RdfController = Depends(get_rdf)):
     """Метод получения списка программ пользователя."""
-    program_service = ProgramService(db)
+    program_service = ProgramService(db, rdf)
     status_code, content = program_service.get_programs(userId)
     return JSONResponse(status_code=status_code, content=content)
 
 
 @router.get("/show-graph")
-def getCertainProgram(userId: int, pathToProgramFolder: str, db: DataBaseController = Depends(get_db)):
+def getCertainProgram(userId: int, pathToProgramFolder: str, db: DataBaseController = Depends(get_db),
+                      rdf: RdfController = Depends(get_rdf)):
     """Метод получения графа учебной программы."""
-    graph_service = GraphService(db)
+    graph_service = GraphService(db, rdf)
     status_code, content = graph_service.get_certain_program(userId, pathToProgramFolder)
     return JSONResponse(status_code=status_code, content=content)
 
@@ -66,11 +67,12 @@ def getAvailableUniversities(db: DataBaseController = Depends(get_db)):
 async def add_program_from_files(
     files: list[UploadFile] = File(...),
     university_name: str = Form(...),
+    program_name: str = Form(...),
     id_user: int = Form(...),
     db: DataBaseController = Depends(get_db),
     rdf: RdfController = Depends(get_rdf)
 ):
     """Метод добавления учебной программы из файлов."""
     program_service = ProgramService(db, rdf)
-    status_code, content = await program_service.add_program_from_files(files, university_name, id_user)
+    status_code, content = await program_service.add_program_from_files(files, university_name, program_name, id_user)
     return JSONResponse(status_code=status_code, content=content)
