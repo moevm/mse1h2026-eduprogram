@@ -1,7 +1,8 @@
 import pygraphdb
 import requests
 from requests.auth import HTTPBasicAuth
-import traceback
+import uuid
+from io import BytesIO
 
 
 class RdfController:
@@ -13,12 +14,14 @@ class RdfController:
         self.url = f"http://{self.host}:{self.port}"
 
         self.db = None
+        self.repository = None
 
     def open_connection(self, repository: str = None) -> bool:
         try:
             if repository:
                 self.db = pygraphdb.connect(host=self.host, port=self.port, user=self.user,
                                             password=self.password, db=repository)
+                self.repository = repository
             else:
                 self.db = pygraphdb.connect(host=self.host, port=self.port, user=self.user,
                                             password=self.password)
@@ -28,16 +31,17 @@ class RdfController:
             return False
 
     @staticmethod
-    def convert_str_from_rdf_to_standart(data: str):
+    def convert_str_from_rdf_to_standard(data: str):
         data = data.replace("_", " ")
         return data.strip()
 
     @staticmethod
     def update_str_data(data: str):
         specialSymbols = ['~', '.', '-', '!', '$', '&', "'", '(', ')', '*', '+', ',',
-                          ';', '=', '?', '#', '@', '%', '№']
+                          ';', '=', '?', '#', '@', '%', '№', '>', '<']
         data = data.replace(" ", "_")
         data = data.replace("/", "_")
+        data = data.replace(",", "_")
         for symb in specialSymbols:
             data = data.replace(symb, "\\" + symb)
         data = data.replace("«", "")
@@ -70,6 +74,113 @@ class RdfController:
 
         return response.status_code
 
+    def _get_graphId_from_userId_university_program(self, idUser: int, university: str, programName: str) -> str:
+        programNameClean = self.update_str_data(programName)
+        universityUserIdClean = self.update_str_data(university + " id " + str(idUser))
+        graphId = f"{universityUserIdClean}/{programNameClean}"
+        return graphId
+
+    def export_graph_as_file(self, graphId: str, fileFormat: str) -> BytesIO | None:
+        """Возможные значения fileFormat: x-trig"""
+        if not self.db or not self.repository:
+            return None
+
+        graphName = f"http://{graphId}"
+
+        export_url = f"{self.url}/repositories/{self.repository}/rdf-graphs/service"
+        params = {"graph": graphName}
+        headers = {"Accept": f"application/{fileFormat}"}
+
+        response = requests.get(export_url, headers=headers, params=params)
+
+        file = BytesIO()
+        file.write(response.content)
+
+        file.seek(0)
+        return file
+
+    def clone_graph(self, idUser: int, university: str, programName: str) -> str | None:
+        if not self.db:
+            return None
+
+        cur = None
+
+        newGraphId = str(uuid.uuid4())
+
+        try:
+            cur = self.db.cursor()
+            cur.execute(
+                f"""
+                PREFIX univ: <http://universities/>
+                PREFIX program: <http://programs/>
+                PREFIX discipline: <http://disciplines/>
+                PREFIX topic: <http://topics/>
+                PREFIX subtopic: <http://subtopic/>
+
+                INSERT {{
+                    GRAPH <http://{newGraphId}> {{
+                        ?s ?p ?o
+                    }}
+                }}
+                
+                WHERE {{
+                    GRAPH <http://{self._get_graphId_from_userId_university_program(idUser, university, programName)}> {{
+                        ?s ?p ?o
+                    }}
+                }}
+                """
+            )
+            return newGraphId
+        except Exception as e:
+            print("Error:", e)
+            return None
+        finally:
+            if cur:
+                cur.close()
+
+
+    def add_percentage_of_subtopic_overlap(self, graphId: str, idUser: int, university: str, programName: str,
+                                           disciplineName: str,
+                                           topicName: str, subtopicName: str, overlapValue: int) -> bool:
+        if not self.db:
+            return False
+
+        cur = None
+
+        programNameClean = self.update_str_data(programName)
+        universityUserIdClean = self.update_str_data(university + " id " + str(idUser))
+        disciplineNameClean = self.update_str_data(disciplineName)
+        topicNameClean = self.update_str_data(topicName)
+        subtopicNameClean = self.update_str_data(subtopicName)
+
+        try:
+            cur = self.db.cursor()
+            cur.execute(
+                f"""
+                PREFIX univ: <http://universities/>
+                PREFIX program: <http://programs/>
+                PREFIX discipline: <http://disciplines/>
+                PREFIX topic: <http://topics/>
+                PREFIX subtopic: <http://subtopic/>
+
+                INSERT DATA {{
+                    GRAPH <http://{graphId}> {{
+                        subtopic:{universityUserIdClean}\/{programNameClean}\/{disciplineNameClean}\/{topicNameClean}\/{subtopicNameClean}
+                        subtopic:hasOverlap
+                        {overlapValue} .
+                    }}
+                }}
+                """
+            )
+            return True
+        except Exception as e:
+            print("Error:", e)
+            return False
+        finally:
+            if cur:
+                cur.close()
+
+
     def add_program(self, university: str, programData: dict, idUser: int) -> bool:
         if not self.db:
             return False
@@ -82,7 +193,7 @@ class RdfController:
         programName = list(programData.keys())[0]
 
         programNameClean = self.update_str_data(programName)
-        universityClean = self.update_str_data(university + " id " + str(idUser))
+        universityUserIdClean = self.update_str_data(university + " id " + str(idUser))
 
         try:
             cur = self.db.cursor()
@@ -93,14 +204,14 @@ class RdfController:
             for discipline in programData[programName]:
                 for disciplineName, disciplineData in discipline.items():
                     disciplineNameClean = self.update_str_data(disciplineName)
-                    disciplines.append(f"program:{universityClean}\/{programNameClean} program:hasDiscipline "
-                                       f"discipline:{universityClean}\/{programNameClean}\/{disciplineNameClean} .")
+                    disciplines.append(f"program:{universityUserIdClean}\/{programNameClean} program:hasDiscipline "
+                                       f"discipline:{universityUserIdClean}\/{programNameClean}\/{disciplineNameClean} .")
                     for previousDiscipline in disciplineData["previousDisciplines"]:
                         previousDisciplineClean = self.update_str_data(previousDiscipline)
                         previousDisciplines.append(
-                            f"discipline:{universityClean}\/{programNameClean}\/{previousDisciplineClean} "
+                            f"discipline:{universityUserIdClean}\/{programNameClean}\/{previousDisciplineClean} "
                             f"discipline:previousDiscipline "
-                            f"discipline:{universityClean}\/{programNameClean}\/{disciplineNameClean} .")
+                            f"discipline:{universityUserIdClean}\/{programNameClean}\/{disciplineNameClean} .")
 
                         try:
                             cur.execute(
@@ -112,7 +223,9 @@ class RdfController:
                                 PREFIX subtopic: <http://subtopic/>
 
                                 INSERT DATA {{
-                                    {previousDisciplines[-1] if len(previousDisciplines) > 0 else ""}
+                                    GRAPH <http://{self._get_graphId_from_userId_university_program(idUser, university, programName)}> {{
+                                        {previousDisciplines[-1] if len(previousDisciplines) > 0 else ""}
+                                    }}
                                 }}
                                 """
                             )
@@ -123,15 +236,15 @@ class RdfController:
                         for topicName, subtopicsList in topicsData.items():
                             topicNameClean = self.update_str_data(topicName)
                             topics.append(
-                                f"discipline:{universityClean}\/{programNameClean}\/{disciplineNameClean} "
+                                f"discipline:{universityUserIdClean}\/{programNameClean}\/{disciplineNameClean} "
                                 f"discipline:hasTopic "
-                                f"topic:{universityClean}\/{programNameClean}\/{disciplineNameClean}\/{topicNameClean} .")
+                                f"topic:{universityUserIdClean}\/{programNameClean}\/{disciplineNameClean}\/{topicNameClean} .")
                             for subtopic in subtopicsList:
                                 subtopicClean = self.update_str_data(subtopic)
                                 subtopics.append(
-                                    f"topic:{universityClean}\/{programNameClean}\/{disciplineNameClean}\/{topicNameClean} "
+                                    f"topic:{universityUserIdClean}\/{programNameClean}\/{disciplineNameClean}\/{topicNameClean} "
                                     f"topic:hasSubtopic "
-                                    f"subtopic:{universityClean}\/{programNameClean}\/{disciplineNameClean}\/{topicNameClean}\/{subtopicClean} .")
+                                    f"subtopic:{universityUserIdClean}\/{programNameClean}\/{disciplineNameClean}\/{topicNameClean}\/{subtopicClean} .")
 
                                 try:
                                     cur.execute(
@@ -143,7 +256,9 @@ class RdfController:
                                         PREFIX subtopic: <http://subtopic/>
 
                                         INSERT DATA {{
-                                            {subtopics[-1] if len(subtopics) > 0 else ""}
+                                            GRAPH <http://{self._get_graphId_from_userId_university_program(idUser, university, programName)}> {{
+                                                {subtopics[-1] if len(subtopics) > 0 else ""}
+                                            }}
                                         }}
                                         """
                                     )
@@ -161,7 +276,9 @@ class RdfController:
                                     PREFIX subtopic: <http://subtopic/>
 
                                     INSERT DATA {{
-                                        {topics[-1] if len(topics) > 0 else ""}
+                                        GRAPH <http://{self._get_graphId_from_userId_university_program(idUser, university, programName)}> {{
+                                            {topics[-1] if len(topics) > 0 else ""}
+                                        }}
                                     }}
                                     """
                                 )
@@ -179,7 +296,9 @@ class RdfController:
                             PREFIX subtopic: <http://subtopic/>
     
                             INSERT DATA {{
-                                {disciplines[-1] if len(disciplines) > 0 else ""}
+                                GRAPH <http://{universityUserIdClean}/{programNameClean}> {{
+                                    {disciplines[-1] if len(disciplines) > 0 else ""}
+                                }}
                             }}
                             """
                         )
@@ -197,7 +316,9 @@ class RdfController:
                 PREFIX subtopic: <http://subtopic/>
 
                 INSERT DATA {{
-                    univ:{universityClean} univ:hasProgram program:{universityClean}\/{programNameClean} .
+                    GRAPH <http://{self._get_graphId_from_userId_university_program(idUser, university, programName)}> {{
+                        univ:{universityUserIdClean} univ:hasProgram program:{universityUserIdClean}\/{programNameClean} 
+                    }}.
                 }}
                 """
             )
@@ -248,84 +369,121 @@ class RdfController:
         return result[1:]
 
     def get_data_of_user(self, idUser: int) -> list:
-        result = self._select_data_of_idUser(idUser).split("\n")
-        if len(result) <= 1:
+        rows = self._select_data_of_idUser(idUser).split("\n")
+        if len(rows) <= 1:
             return []
-        programs = set()
-        for row in result:
+        result = set()
+        for row in rows:
             try:
                 subject = row.split(',')[0]
                 if 'http://programs/' in subject:
                     program = subject.split('/')[-1]
+                    university = subject.split('/')[-2]
                     program = program.replace("_", " ")
-                    programs.add(program)
+                    university = university.split("_id_")[0].replace("_", " ")
+                    result.add((university, program))
             except Exception as e:
                 continue
-        return list(programs)
+        return list(result)
 
     def get_data_of_university_and_program(self, universityName: str, programName: str, idUser: int) -> dict:
-        result = self._select_data_of_university_and_program(universityName, programName, idUser).split("\n")
-        if len(result) <= 1:
+        universityUserIdNameClean = self.update_str_data(universityName + " id " + str(idUser))
+        programNameClean = self.update_str_data(programName)
+        graphName = f"<http://{universityUserIdNameClean}/{programNameClean}>"
+        result = self._select_data_from_graph(graphName).split("\n")
+        return self._convert_rdf_rows_to_json(programName, result)
+
+    def get_data_of_graph(self, graphId: str, programName: str) -> dict:
+        graphName = f"<http://{graphId}>"
+        result = self._select_data_from_graph(graphName).split("\n")
+        return self._convert_rdf_rows_to_json(programName, result)
+
+    def _select_all_graphs(self) -> str | None:
+        query = f"""
+                PREFIX univ: <http://universities/>
+                PREFIX program: <http://programs/>
+                PREFIX discipline: <http://disciplines/>
+                PREFIX topic: <http://topics/>
+                PREFIX subtopic: <http://subtopic/>
+
+                SELECT DISTINCT ?g WHERE {{
+                    GRAPH ?g {{
+                        ?s ?p ?o
+                    }}
+                }}
+
+                """
+        return self._select_operation(query)
+
+    def _convert_rdf_rows_to_json(self, programName: str, rows: list) -> dict:
+        if len(rows) <= 1:
             return {}
         jsonProgram = {}
-        for row in result:
+        for row in rows:
             try:
                 predicat = row.split(',')[1]
                 if 'programs/hasDiscipline' in predicat:
                     subject = row.split(',')[0]
                     object = row.split(',')[2]
-                    discipline = self.convert_str_from_rdf_to_standart(object.split('/')[-1])
+                    discipline = self.convert_str_from_rdf_to_standard(object.split('/')[-1])
                     jsonProgram[discipline] = {"previousDisciplines": [], "topics": {}}
             except Exception as e:
                 continue
-        print(len(jsonProgram))
-        for row in result:
+        for row in rows:
             try:
                 predicat = row.split(',')[1]
                 if 'disciplines/previousDiscipline' in predicat:
                     subject = row.split(',')[0]
                     object = row.split(',')[2]
-                    disciplineCurrent = self.convert_str_from_rdf_to_standart(subject.split('/')[-1])
-                    disciplinePrevious = self.convert_str_from_rdf_to_standart(object.split('/')[-1])
+                    disciplineCurrent = self.convert_str_from_rdf_to_standard(subject.split('/')[-1])
+                    disciplinePrevious = self.convert_str_from_rdf_to_standard(object.split('/')[-1])
                     jsonProgram[disciplinePrevious]["previousDisciplines"].append(disciplineCurrent)
             except Exception as e:
                 continue
 
-        for row in result:
+        for row in rows:
             try:
                 predicat = row.split(',')[1]
                 if 'disciplines/hasTopic' in predicat:
                     subject = row.split(',')[0]
                     object = row.split(',')[2]
-                    discipline = self.convert_str_from_rdf_to_standart(subject.split('/')[-1])
-                    topic = self.convert_str_from_rdf_to_standart(object.split('/')[-1])
-                    jsonProgram[discipline]["topics"][topic] = {"subtopics": []}
+                    discipline = self.convert_str_from_rdf_to_standard(subject.split('/')[-1])
+                    topic = self.convert_str_from_rdf_to_standard(object.split('/')[-1])
+                    jsonProgram[discipline]["topics"][topic] = {"subtopics": {}}
             except Exception as e:
                 continue
 
-        for row in result:
+        for row in rows:
             try:
                 predicat = row.split(',')[1]
                 if 'topics/hasSubtopic' in predicat:
                     subject = row.split(',')[0]
                     object = row.split(',')[2]
-                    topic = self.convert_str_from_rdf_to_standart(subject.split('/')[-1])
-                    discipline = self.convert_str_from_rdf_to_standart(subject.split('/')[-2])
-                    subtopic = self.convert_str_from_rdf_to_standart(object.split('/')[-1])
-                    jsonProgram[discipline]["topics"][topic]["subtopics"].append(subtopic)
+                    topic = self.convert_str_from_rdf_to_standard(subject.split('/')[-1])
+                    discipline = self.convert_str_from_rdf_to_standard(subject.split('/')[-2])
+                    subtopic = self.convert_str_from_rdf_to_standard(object.split('/')[-1])
+                    jsonProgram[discipline]["topics"][topic]["subtopics"][subtopic] = {}
+            except Exception as e:
+                continue
+
+        for row in rows:
+            try:
+                predicat = row.split(',')[1]
+                if 'subtopic/hasOverlap' in predicat:
+                    subject = row.split(',')[0]
+                    object = row.split(',')[2]
+                    subtopic = self.convert_str_from_rdf_to_standard(subject.split('/')[-1])
+                    topic = self.convert_str_from_rdf_to_standard(subject.split('/')[-2])
+                    discipline = self.convert_str_from_rdf_to_standard(subject.split('/')[-3])
+                    overlap = int(object)
+                    jsonProgram[discipline]["topics"][topic]["subtopics"][subtopic]["overlapValue"] = overlap
             except Exception as e:
                 continue
 
         return {programName: jsonProgram}
 
     def _select_all_data(self) -> str | None:
-        if not self.db:
-            return None
-        cur = None
-        try:
-            cur = self.db.cursor()
-            result = cur.execute(
-                f"""
+        query = f"""
                 PREFIX univ: <http://universities/>
                 PREFIX program: <http://programs/>
                 PREFIX discipline: <http://disciplines/>
@@ -339,57 +497,26 @@ class RdfController:
                             ?p = discipline:hasTopic || ?p = topic:hasSubtopic)
                 }}
                 """
-            )
+        return self._select_operation(query)
 
-            return result
-        except Exception as e:
-            print("Error:", e)
-            return None
-        finally:
-            if cur:
-                cur.close()
-
-    def _select_data_of_university_and_program(self, universityName: str, programName: str, idUser: int) -> str | None:
-        if not self.db:
-            return None
-        cur = None
-        universityNameClean = self.update_str_data(universityName + " id " + str(idUser))
-        programNameClean = self.update_str_data(programName)
-        try:
-            cur = self.db.cursor()
-            result = cur.execute(
-                f"""
+    def _select_data_from_graph(self, graphName: str) -> str | None:
+        query = f"""
                 PREFIX univ: <http://universities/>
                 PREFIX program: <http://programs/>
                 PREFIX discipline: <http://disciplines/>
                 PREFIX topic: <http://topics/>
                 PREFIX subtopic: <http://subtopic/>
-
-                SELECT ?s ?p ?o
-                WHERE {{
-                    ?s ?p ?o .
-                    FILTER(CONTAINS(STR(?o), "{universityNameClean}/{programNameClean}") || 
-                    CONTAINS(STR(?s), "{universityNameClean}/{programNameClean}"))
+                
+                SELECT ?s ?p ?o FROM NAMED {graphName} {{
+                  GRAPH ?g {{
+                    ?s ?p ?o
+                  }}
                 }}
                 """
-            )
-
-            return result
-        except Exception as e:
-            print("Error:", e)
-            return None
-        finally:
-            if cur:
-                cur.close()
+        return self._select_operation(query)
 
     def _select_data_of_idUser(self, idUser: int) -> str | None:
-        if not self.db:
-            return None
-        cur = None
-        try:
-            cur = self.db.cursor()
-            result = cur.execute(
-                f"""
+        query = f"""
                 PREFIX univ: <http://universities/>
                 PREFIX program: <http://programs/>
                 PREFIX discipline: <http://disciplines/>
@@ -403,8 +530,17 @@ class RdfController:
                     CONTAINS(STR(?s), "_id_{str(idUser)}"))
                 }}
                 """
-            )
+        return self._select_operation(query)
 
+    def _select_operation(self, query: str):
+        if not self.db:
+            return None
+        cur = None
+        try:
+            cur = self.db.cursor()
+            result = cur.execute(
+                query
+            )
             return result
         except Exception as e:
             print("Error:", e)

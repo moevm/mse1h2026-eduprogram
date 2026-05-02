@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import "./UploadProgram.css";
+import Input from "./Input";
+import Button from "./Button/Button";
 
 // Настройки IndexedDB
 const dbName = "ProgramFilesDB";
@@ -67,6 +69,7 @@ export default function UploadProgram() {
   const [university, setUniversity] = useState("");
   const inputRef = useRef();
   const [arrayUniversities, setArrayUniversities] = useState([]);
+  const [programName, setProgramName] = useState("");
 
   // Загрузка сохраненных файлов и университета
   useEffect(() => {
@@ -175,6 +178,7 @@ export default function UploadProgram() {
     files.forEach((file) => formData.append("files", file));
     formData.append("university_name", university);
     formData.append("id_user", localStorage.getItem("userId"));
+    formData.append("program_name", programName);
 
     try {
       const response = await fetch(
@@ -198,6 +202,15 @@ export default function UploadProgram() {
     <div className="wrapper">
       <div className="card">
         <h2>Загрузка рабочей программы</h2>
+
+        <Input
+            type="text"
+            placeholder="Название программы"
+            onChange={(e) => setProgramName(e.target.value)}
+            required
+            icon="settings"
+        >
+        </Input>
 
         {/* Выбор университета */}
         <select
@@ -244,9 +257,9 @@ export default function UploadProgram() {
           </ul>
         )}
 
-        <button onClick={handleSubmit} className="button">
+        <Button onClick={handleSubmit}>
           Отправить
-        </button>
+        </Button>
       </div>
     </div>
   );

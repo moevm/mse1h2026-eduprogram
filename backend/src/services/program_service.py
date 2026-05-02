@@ -261,7 +261,7 @@ class ProgramService:
                 }
 
             if self.rdf:
-                self.rdf.add_program(name_university, payload)
+                self.rdf.add_program(name_university, payload, id_user)
 
             path_work_program = Path(name_university) / name_direction / f"{root_program_name}_{id_user}.json"
             is_exist_direction_path, is_exist_work_program_path = self._upload_json_file(
@@ -356,7 +356,10 @@ class ProgramService:
                 {"responseMessage": "DataBase connect error!"}
             )
 
-        programs = self.db.getWorkPrograms(user_id)
+        # programs = self.db.getWorkPrograms(user_id)
+        programs = []
+        if self.rdf:
+            programs = self.rdf.get_data_of_user(user_id)
 
         return (
             status.HTTP_200_OK,
@@ -386,6 +389,7 @@ class ProgramService:
             self,
             files: List,
             university_name: str,
+            program_name: str,
             id_user: int
     ) -> Tuple[int, Dict[str, Any]]:
         """Метод добавления учебной программы из файлов."""
@@ -417,7 +421,7 @@ class ProgramService:
 
         parser_class = mapParsersFromTypeToObject[parser_type]
         parser = parser_class()
-        result = parser.parse(files_data, "program")
+        result = parser.parse(files_data, program_name)
 
         has_disciplines = any(
             isinstance(value, list) and len(value) > 0 for value in result.values()
@@ -434,7 +438,7 @@ class ProgramService:
                                                                              result)
 
         if self.rdf:
-            self.rdf.add_program(university_name, result)
+            self.rdf.add_program(university_name, result, id_user)
 
         if not is_exist_direction_path:
             add_result = self.db.addUserFolder(id_user, str(path_work_program.parent))

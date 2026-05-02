@@ -4,6 +4,7 @@ from pytest import mark
 
 
 @mark.order(4)
+@mark.client
 class TestAddProgram(BaseTest):
     def test_add_program(self, login_user):
         self.main_page.open()

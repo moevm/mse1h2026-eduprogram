@@ -4,6 +4,7 @@ from pytest import mark
 
 
 @mark.order(1)
+@mark.client
 class TestRegister(BaseTest):
     def test_register_test_user(self):
 

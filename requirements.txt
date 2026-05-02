@@ -10,6 +10,7 @@ deep-translator==1.11.4
 dnspython==2.8.0
 dotenv==0.9.9
 email-validator==2.3.0
+Faker==40.15.0
 fastapi==0.134.0
 h11==0.16.0
 idna==3.11
@@ -22,6 +23,7 @@ psycopg2-binary==2.9.11
 pydantic==2.12.5
 pydantic_core==2.41.5
 Pygments==2.20.0
+pygraphdb==2.0.3
 PyMuPDF==1.27.1
 PySocks==1.7.1
 pytest==9.0.3
