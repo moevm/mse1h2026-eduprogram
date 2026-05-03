@@ -41,3 +41,15 @@
 .custom-button:hover::after {
   opacity: 1;
 }
+
+.custom-button:disabled {
+  background-color: #9e9e9e;
+  color: #f2f2f2;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.custom-button:disabled::after {
+  opacity: 0;
+}

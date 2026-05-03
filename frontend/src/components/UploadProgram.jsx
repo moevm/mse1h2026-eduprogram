@@ -70,6 +70,8 @@ export default function UploadProgram() {
   const inputRef = useRef();
   const [arrayUniversities, setArrayUniversities] = useState([]);
   const [programName, setProgramName] = useState("");
+  const isProgramNameValid = programName.trim().length > 0;
+  const [programTouched, setProgramTouched] = useState(false);
 
   // Загрузка сохраненных файлов и университета
   useEffect(() => {
@@ -165,6 +167,12 @@ export default function UploadProgram() {
 
   // Отправка формы
   const handleSubmit = async () => {
+    if (!isProgramNameValid) {
+      setProgramTouched(true);
+      alert("Пожалуйста, введите название программы");
+      return;
+    }
+
     if (!university) {
       alert("Пожалуйста, выберите университет");
       return;
@@ -178,7 +186,7 @@ export default function UploadProgram() {
     files.forEach((file) => formData.append("files", file));
     formData.append("university_name", university);
     formData.append("id_user", localStorage.getItem("userId"));
-    formData.append("program_name", programName);
+    formData.append("program_name", programName.trim());
 
     try {
       const response = await fetch(
@@ -203,14 +211,21 @@ export default function UploadProgram() {
       <div className="card">
         <h2>Загрузка рабочей программы</h2>
 
-        <Input
+        <div className="program-name-wrapper">
+          <Input
             type="text"
             placeholder="Название программы"
+            value={programName}
             onChange={(e) => setProgramName(e.target.value)}
+            onBlur={() => setProgramTouched(true)}
             required
             icon="settings"
-        >
-        </Input>
+          />
+
+          {programTouched && !isProgramNameValid && (
+            <div className="program-name-hint">Введите название программы, это обязательное поле</div>
+          )}
+        </div>
 
         {/* Выбор университета */}
         <select
@@ -257,7 +272,7 @@ export default function UploadProgram() {
           </ul>
         )}
 
-        <Button onClick={handleSubmit}>
+        <Button onClick={handleSubmit} disabled={!isProgramNameValid}>
           Отправить
         </Button>
       </div>
