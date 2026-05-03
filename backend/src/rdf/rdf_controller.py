@@ -99,101 +99,26 @@ class RdfController:
         file.seek(0)
         return file
 
-    def clone_graph(self, idUser: int, university: str, programName: str) -> str | None:
+    def add_program(self, university: str, programData: dict, idUser: int,
+                    isNewGraph = False, isAfterAnalyze = False) -> str | None:
         if not self.db:
             return None
-
-        cur = None
-
-        newGraphId = str(uuid.uuid4())
-
-        try:
-            cur = self.db.cursor()
-            cur.execute(
-                f"""
-                PREFIX univ: <http://universities/>
-                PREFIX program: <http://programs/>
-                PREFIX discipline: <http://disciplines/>
-                PREFIX topic: <http://topics/>
-                PREFIX subtopic: <http://subtopic/>
-
-                INSERT {{
-                    GRAPH <http://{newGraphId}> {{
-                        ?s ?p ?o
-                    }}
-                }}
-                
-                WHERE {{
-                    GRAPH <http://{self._get_graphId_from_userId_university_program(idUser, university, programName)}> {{
-                        ?s ?p ?o
-                    }}
-                }}
-                """
-            )
-            return newGraphId
-        except Exception as e:
-            print("Error:", e)
-            return None
-        finally:
-            if cur:
-                cur.close()
-
-
-    def add_percentage_of_subtopic_overlap(self, graphId: str, idUser: int, university: str, programName: str,
-                                           disciplineName: str,
-                                           topicName: str, subtopicName: str, overlapValue: int) -> bool:
-        if not self.db:
-            return False
-
-        cur = None
-
-        programNameClean = self.update_str_data(programName)
-        universityUserIdClean = self.update_str_data(university + " id " + str(idUser))
-        disciplineNameClean = self.update_str_data(disciplineName)
-        topicNameClean = self.update_str_data(topicName)
-        subtopicNameClean = self.update_str_data(subtopicName)
-
-        try:
-            cur = self.db.cursor()
-            cur.execute(
-                f"""
-                PREFIX univ: <http://universities/>
-                PREFIX program: <http://programs/>
-                PREFIX discipline: <http://disciplines/>
-                PREFIX topic: <http://topics/>
-                PREFIX subtopic: <http://subtopic/>
-
-                INSERT DATA {{
-                    GRAPH <http://{graphId}> {{
-                        subtopic:{universityUserIdClean}\/{programNameClean}\/{disciplineNameClean}\/{topicNameClean}\/{subtopicNameClean}
-                        subtopic:hasOverlap
-                        {overlapValue} .
-                    }}
-                }}
-                """
-            )
-            return True
-        except Exception as e:
-            print("Error:", e)
-            return False
-        finally:
-            if cur:
-                cur.close()
-
-
-    def add_program(self, university: str, programData: dict, idUser: int) -> bool:
-        if not self.db:
-            return False
 
         cur = None
 
         if len(list(programData.keys())) == 0:
-            return False
+            return None
 
         programName = list(programData.keys())[0]
 
         programNameClean = self.update_str_data(programName)
         universityUserIdClean = self.update_str_data(university + " id " + str(idUser))
+
+        graphId = None
+        if isNewGraph:
+            graphId = str(uuid.uuid4())
+        else:
+            graphId = self._get_graphId_from_userId_university_program(idUser, university, programName)
 
         try:
             cur = self.db.cursor()
@@ -223,7 +148,7 @@ class RdfController:
                                 PREFIX subtopic: <http://subtopic/>
 
                                 INSERT DATA {{
-                                    GRAPH <http://{self._get_graphId_from_userId_university_program(idUser, university, programName)}> {{
+                                    GRAPH <http://{graphId}> {{
                                         {previousDisciplines[-1] if len(previousDisciplines) > 0 else ""}
                                     }}
                                 }}
@@ -240,11 +165,23 @@ class RdfController:
                                 f"discipline:hasTopic "
                                 f"topic:{universityUserIdClean}\/{programNameClean}\/{disciplineNameClean}\/{topicNameClean} .")
                             for subtopic in subtopicsList:
-                                subtopicClean = self.update_str_data(subtopic)
-                                subtopics.append(
-                                    f"topic:{universityUserIdClean}\/{programNameClean}\/{disciplineNameClean}\/{topicNameClean} "
-                                    f"topic:hasSubtopic "
-                                    f"subtopic:{universityUserIdClean}\/{programNameClean}\/{disciplineNameClean}\/{topicNameClean}\/{subtopicClean} .")
+                                if isAfterAnalyze:
+                                    for subtopicName, subtopicData in subtopic.items():
+                                        subtopicNameClean = self.update_str_data(subtopicName)
+                                        overlap = int(subtopicData["overlapValue"])
+                                        subtopics.append(
+                                            f"topic:{universityUserIdClean}\/{programNameClean}\/{disciplineNameClean}\/{topicNameClean} "
+                                            f"topic:hasSubtopic "
+                                            f"subtopic:{universityUserIdClean}\/{programNameClean}\/{disciplineNameClean}\/{topicNameClean}\/{subtopicNameClean} ."
+                                            f"subtopic:{universityUserIdClean}\/{programNameClean}\/{disciplineNameClean}\/{topicNameClean}\/{subtopicNameClean} "
+                                            f"subtopic:hasOverlap "
+                                            f"{overlap} .")
+                                else:
+                                    subtopicClean = self.update_str_data(subtopic)
+                                    subtopics.append(
+                                        f"topic:{universityUserIdClean}\/{programNameClean}\/{disciplineNameClean}\/{topicNameClean} "
+                                        f"topic:hasSubtopic "
+                                        f"subtopic:{universityUserIdClean}\/{programNameClean}\/{disciplineNameClean}\/{topicNameClean}\/{subtopicClean} .")
 
                                 try:
                                     cur.execute(
@@ -256,7 +193,7 @@ class RdfController:
                                         PREFIX subtopic: <http://subtopic/>
 
                                         INSERT DATA {{
-                                            GRAPH <http://{self._get_graphId_from_userId_university_program(idUser, university, programName)}> {{
+                                            GRAPH <http://{graphId}> {{
                                                 {subtopics[-1] if len(subtopics) > 0 else ""}
                                             }}
                                         }}
@@ -276,7 +213,7 @@ class RdfController:
                                     PREFIX subtopic: <http://subtopic/>
 
                                     INSERT DATA {{
-                                        GRAPH <http://{self._get_graphId_from_userId_university_program(idUser, university, programName)}> {{
+                                        GRAPH <http://{graphId}> {{
                                             {topics[-1] if len(topics) > 0 else ""}
                                         }}
                                     }}
@@ -296,7 +233,7 @@ class RdfController:
                             PREFIX subtopic: <http://subtopic/>
     
                             INSERT DATA {{
-                                GRAPH <http://{universityUserIdClean}/{programNameClean}> {{
+                                GRAPH <http://{graphId}> {{
                                     {disciplines[-1] if len(disciplines) > 0 else ""}
                                 }}
                             }}
@@ -316,17 +253,17 @@ class RdfController:
                 PREFIX subtopic: <http://subtopic/>
 
                 INSERT DATA {{
-                    GRAPH <http://{self._get_graphId_from_userId_university_program(idUser, university, programName)}> {{
+                    GRAPH <http://{graphId}> {{
                         univ:{universityUserIdClean} univ:hasProgram program:{universityUserIdClean}\/{programNameClean} 
                     }}.
                 }}
                 """
             )
 
-            return True
+            return graphId
         except Exception as e:
             print("Error:", e)
-            return False
+            return None
         finally:
             if cur:
                 cur.close()
@@ -372,31 +309,31 @@ class RdfController:
         rows = self._select_data_of_idUser(idUser).split("\n")
         if len(rows) <= 1:
             return []
-        result = set()
+        result = []
         for row in rows:
             try:
-                subject = row.split(',')[0]
-                if 'http://programs/' in subject:
-                    program = subject.split('/')[-1]
-                    university = subject.split('/')[-2]
+                object = row.split(',')[2]
+                if 'http://programs/' in object:
+                    program = object.split('/')[-1]
+                    university = object.split('/')[-2]
                     program = program.replace("_", " ")
                     university = university.split("_id_")[0].replace("_", " ")
-                    result.add((university, program))
+                    result.append({"university_name": university, "program_name": program})
             except Exception as e:
                 continue
-        return list(result)
+        return result
 
     def get_data_of_university_and_program(self, universityName: str, programName: str, idUser: int) -> dict:
         universityUserIdNameClean = self.update_str_data(universityName + " id " + str(idUser))
         programNameClean = self.update_str_data(programName)
         graphName = f"<http://{universityUserIdNameClean}/{programNameClean}>"
         result = self._select_data_from_graph(graphName).split("\n")
-        return self._convert_rdf_rows_to_json(programName, result)
+        return self._convert_rdf_rows_to_json(result)
 
-    def get_data_of_graph(self, graphId: str, programName: str) -> dict:
+    def get_data_of_graph(self, graphId: str) -> dict:
         graphName = f"<http://{graphId}>"
         result = self._select_data_from_graph(graphName).split("\n")
-        return self._convert_rdf_rows_to_json(programName, result)
+        return self._convert_rdf_rows_to_json(result)
 
     def _select_all_graphs(self) -> str | None:
         query = f"""
@@ -415,10 +352,21 @@ class RdfController:
                 """
         return self._select_operation(query)
 
-    def _convert_rdf_rows_to_json(self, programName: str, rows: list) -> dict:
+    def _convert_rdf_rows_to_json(self, rows: list) -> dict:
         if len(rows) <= 1:
             return {}
         jsonProgram = {}
+        programName = None
+        for row in rows:
+            try:
+                predicat = row.split(',')[1]
+                if 'universities/hasProgram' in predicat:
+                    subject = row.split(',')[0]
+                    object = row.split(',')[2]
+                    programName = self.convert_str_from_rdf_to_standard(object.split('/')[-1])
+                    break
+            except Exception as e:
+                continue
         for row in rows:
             try:
                 predicat = row.split(',')[1]
@@ -525,7 +473,7 @@ class RdfController:
 
                 SELECT ?s ?p ?o
                 WHERE {{
-                    ?s ?p ?o .
+                    ?s univ:hasProgram ?o .
                     FILTER(CONTAINS(STR(?o), "_id_{str(idUser)}") || 
                     CONTAINS(STR(?s), "_id_{str(idUser)}"))
                 }}
