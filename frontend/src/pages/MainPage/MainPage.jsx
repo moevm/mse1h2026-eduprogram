@@ -28,10 +28,24 @@ const MainPage = () => {
         throw new Error(`HTTP ${response.status}`);
       }
       const data = await response.json();
-      const normalizedPrograms = (data.programs || []).map((programPath) => ({
-        path: programPath,
-        displayName: String(programPath).replace(/^frontend\//i, ''),
-      }));
+      const normalizedPrograms = (data.programs || []).map((programItem) => {
+        if (Array.isArray(programItem) && programItem.length >= 2) {
+          const universityName = String(programItem[0] || '').trim();
+          const programName = String(programItem[1] || '').trim();
+          return {
+            universityName,
+            programName,
+            displayName: universityName ? `${programName} (${universityName})` : programName,
+          };
+        }
+
+        const rawValue = String(programItem || '');
+        return {
+          universityName: 'frontend',
+          programName: rawValue.replace(/^frontend\//i, ''),
+          displayName: rawValue.replace(/^frontend\//i, ''),
+        };
+      });
       setPrograms(normalizedPrograms);
       setIsOpen(true);
     } catch (error) {
@@ -42,13 +56,25 @@ const MainPage = () => {
     }
   };
 
-  const handleShowGraph = (programFolder) => {
-    if (!programFolder) {
+  const handleShowGraph = (program) => {
+    const programName = program?.programName;
+    const universityName = program?.universityName;
+
+    if (!programName) {
       return;
     }
 
     setIsOpen(false);
-    navigate(`/graph?folder=${encodeURIComponent(programFolder)}`);
+
+    const params = new URLSearchParams({
+      folder: programName,
+    });
+
+    if (universityName) {
+      params.set('university', universityName);
+    }
+
+    navigate(`/graph?${params.toString()}`);
   };
 
   const handleAddProgram = () => {
