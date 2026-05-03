@@ -19,7 +19,7 @@ const ProgramsModal = ({ isOpen, onClose, programs, onShowGraph }) => {
                 <Button
                 type="button"
                 color="#000000"
-                onClick={() => onShowGraph(program.path || program)}
+                onClick={() => onShowGraph(program)}
                 width="160px"
                 height="43px"
                 absolute={false}

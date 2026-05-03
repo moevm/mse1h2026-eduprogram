@@ -125,6 +125,7 @@ const GraphPage = () => {
             const userId = Number(localStorage.getItem('userId'));
             const params = new URLSearchParams(location.search);
             const folder = params.get('folder');
+            const university = params.get('university');
 
             if (!Number.isInteger(userId) || userId <= 0) {
                 setError('Пользователь не авторизован. Войдите заново.');
@@ -139,7 +140,7 @@ const GraphPage = () => {
             }
 
             try {
-                const data = await fetchGraphData(userId, folder);
+                const data = await fetchGraphData(userId, folder, university || undefined);
                 setGraphData(data);
                 setError('');
             } catch (err) {
