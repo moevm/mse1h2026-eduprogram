@@ -2,10 +2,11 @@ from typing import Dict, List, Set, Tuple
 from collections import defaultdict
 import json
 
-from subtopic_matcher import HeuristicSubtopicMatcher
-from gigachat_matcher import GigachatMatcher
+from ..utils.subtopic_matcher import HeuristicSubtopicMatcher
+from ..utils.gigachat_matcher import GigachatMatcher
 from src.rdf.rdf_controller import RdfController
 from src.dataBase.dataBaseController import DataBaseController
+from src.dataBase.dataBaseStructs import ProgramReference
 
 class EducationProgramCompareService:
     
@@ -40,7 +41,7 @@ class EducationProgramCompareService:
         formatted_result = self.format_comparison_result_for_graphs(target_program, other_programs)
         rdf.add_program(university_name, comparison_result, id_user, True, True)
 
-    return (
+        return (
                 status.HTTP_200_OK,
                 {formatted_result}
             )

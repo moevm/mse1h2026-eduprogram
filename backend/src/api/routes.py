@@ -9,6 +9,9 @@ from src.services.auth_service import AuthService
 from src.services.program_service import ProgramService
 from src.services.graph_service import GraphService
 from src.services.compare_service import EducationProgramCompareService
+from src.services.gigachat_service import GigachatService
+from src.dataBase.dataBaseStructs import ProgramReference
+from typing import List
 from typing import Any
 
 router = APIRouter()
@@ -84,10 +87,13 @@ async def compare_graphs(
     id_user: int = Form(...),
     university_name: str = Form(...),
     program_name: str = Form(...),
-    compare_programs: List[ProgramReference],
+    compare_programs: List[ProgramReference] =  Form(...),
     db: DataBaseController = Depends(get_db), 
     rdf: RdfController = Depends(get_rdf)
 ):
-    compare_service = EducationProgramCompareService()
+    gigachat = GigachatService()
+    compare_service = EducationProgramCompareService(gigachat, db, rdf);
+    status_code, content = compare_service.compare_programs_for_graphs(id_user, university_name, program_name, compare_programs)
+    return JSONResponse(status_code=status_code, content=content)
 
 
