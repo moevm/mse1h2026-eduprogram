@@ -7,6 +7,7 @@ import GraphPage from './pages/GraphPage/GraphPage';
 import './assets/styles/global.css';
 import MainPage from './pages/MainPage/MainPage';
 import UploadProgram from './components/UploadProgram';
+import ComparePage from "./pages/ComparePage/ComparePage";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Route path="/work_program" element={< WorkProgramPage/>} />
         <Route path="/graph" element={<GraphPage />} />
         <Route path="/main" element={< MainPage/>} />
+        <Route path="/compare_graphs" element={<ComparePage/>}/>
         <Route path="/upload_programs" element={< UploadProgram/>}/>
       </Routes>
     </BrowserRouter>
