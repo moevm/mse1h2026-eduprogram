@@ -7,6 +7,7 @@ from ..utils.gigachat_matcher import GigachatMatcher
 from src.rdf.rdf_controller import RdfController
 from src.dataBase.dataBaseController import DataBaseController
 from src.dataBase.dataBaseStructs import ProgramReference
+from fastapi import status
 
 class EducationProgramCompareService:
     
@@ -21,41 +22,74 @@ class EducationProgramCompareService:
             'total_comparisons': 0
         }
     
-    def compare_programs_for_graphs(self, id_user : str, university_name: str, program_name: str, compare_programs: List[ProgramReference]):
-        other_programs = None
-        target_program = None
+    def compare_programs_for_graphs(self, id_user : int, university_name: str, program_name: str, compare_programs: List[ProgramReference]):
+        other_programs = []
 
-        program = rdf.get_data_of_university_and_program(university_name, program_name, id_user)
-        if program:
-            other_programs.append(program)
+        target_program = self.rdf.get_data_of_university_and_program(university_name, program_name, id_user)
+        print("DEBUG: raw target_program:", target_program)
 
-        for program in compare_programs:
-            university_name = program.university_name
-            program_name = program.program_name
+        target_program = self._normalize_program_structure(target_program)
+        print("DEBUG: normalized target_program:", target_program)
 
-            program = rdf.get_data_of_university_and_program(university_name, program_name, id_user)
-            if program:
-                other_programs.append(program)
+        for ref in compare_programs or []:
+            ref_university = ref.university_name
+            ref_program = ref.program_name
 
-        comparison_result = self.compare_programs(target_program, other_programs)
-        formatted_result = self.format_comparison_result_for_graphs(target_program, other_programs)
-        rdf.add_program(university_name, comparison_result, id_user, True, True)
+            prog = self.rdf.get_data_of_university_and_program(ref_university, ref_program, id_user)
+            prog = self._normalize_program_structure(prog)
+            if prog:
+                other_programs.append(prog)
+
+        if not target_program:
+            return (status.HTTP_400_BAD_REQUEST, {"error": "target program not found"})
+
+        try:
+            comparison_result = self.compare_programs(target_program, other_programs)
+            formatted_result = self.format_comparison_result_for_graphs(target_program, other_programs)
+        except Exception as e:
+            return (status.HTTP_400_BAD_REQUEST, {"error": str(e)})
+
+        try:
+            self.rdf.add_program(university_name, comparison_result, id_user)
+        except Exception:
+            pass
 
         return (
-                status.HTTP_200_OK,
-                {formatted_result}
-            )
+            status.HTTP_200_OK,
+            formatted_result
+        )
 
     def extract_subtopics_from_program(self, program: Dict) -> Set[str]:
         subtopics = set()
         
         for program_name, disciplines_list in program.items():
-            for discipline_dict in disciplines_list:
-                for discipline_name, discipline_data in discipline_dict.items():
-                    topics = discipline_data.get('topics', [])
+            print("DEBUG: extract_subtopics_from_program disciplines_list type:", type(disciplines_list))
+            if isinstance(disciplines_list, dict):
+                disciplines_iter = disciplines_list.items()
+            else:
+                disciplines_iter = []
+                for discipline_dict in disciplines_list:
+                    if not isinstance(discipline_dict, dict):
+                        print("DEBUG: unexpected discipline_dict (not dict):", repr(discipline_dict))
+                        continue
+                    if isinstance(discipline_dict, dict):
+                        disciplines_iter.extend(discipline_dict.items())
+            for discipline_name, discipline_data in disciplines_iter:
+                topics = discipline_data.get('topics', [])
+                if isinstance(topics, dict):
+                    topic_items = topics.items()
+                else:
+                    topic_items = []
                     for topic in topics:
-                        for topic_name, subtopic_list in topic.items():
-                            subtopics.update(subtopic_list)
+                        if isinstance(topic, dict):
+                            topic_items.extend(topic.items())
+                for topic_name, subtopic_list in topic_items:
+                    if isinstance(subtopic_list, dict) and 'educationalUnits' in subtopic_list:
+                        units = subtopic_list['educationalUnits']
+                    else:
+                        units = subtopic_list
+                    for st in units:
+                        subtopics.add(st)
         
         return subtopics
     
@@ -63,14 +97,35 @@ class EducationProgramCompareService:
         result = {}
         
         for program_name, disciplines_list in program.items():
-            for discipline_dict in disciplines_list:
-                for discipline_name, discipline_data in discipline_dict.items():
-                    discipline_subtopics = set()
-                    topics = discipline_data.get('topics', [])
+            print("DEBUG: extract_disciplines_with_subtopics disciplines_list type:", type(disciplines_list))
+            if isinstance(disciplines_list, dict):
+                disciplines_iter = disciplines_list.items()
+            else:
+                disciplines_iter = []
+                for discipline_dict in disciplines_list:
+                    if not isinstance(discipline_dict, dict):
+                        print("DEBUG: unexpected discipline_dict in disciplines_with_subtopics:", repr(discipline_dict))
+                        continue
+                    if isinstance(discipline_dict, dict):
+                        disciplines_iter.extend(discipline_dict.items())
+            for discipline_name, discipline_data in disciplines_iter:
+                discipline_subtopics = set()
+                topics = discipline_data.get('topics', [])
+                if isinstance(topics, dict):
+                    topic_items = topics.items()
+                else:
+                    topic_items = []
                     for topic in topics:
-                        for topic_name, subtopic_list in topic.items():
-                            discipline_subtopics.update(subtopic_list)
-                    result[discipline_name] = discipline_subtopics
+                        if isinstance(topic, dict):
+                            topic_items.extend(topic.items())
+                for topic_name, subtopic_list in topic_items:
+                    if isinstance(subtopic_list, dict) and 'educationalUnits' in subtopic_list:
+                        units = subtopic_list['educationalUnits']
+                    else:
+                        units = subtopic_list
+                    for st in units:
+                        discipline_subtopics.add(st)
+                result[discipline_name] = discipline_subtopics
         
         return result
     
@@ -276,6 +331,29 @@ class EducationProgramCompareService:
             'total_comparisons': 0
         }
         self.llm_queries.clear_cache()
+
+    def _normalize_program_structure(self, program: Dict) -> Dict:
+        """Ensure program has format {programName: [ {disciplineName: disciplineData}, ... ]}
+        Accepts either {programName: {disciplineName: disciplineData, ...}} or already normalized forms.
+        """
+        if not program:
+            return program
+
+        try:
+            program_name = list(program.keys())[0]
+            disciplines = program.get(program_name, None)
+            if disciplines is None:
+                return program
+
+            if isinstance(disciplines, dict):
+                new_list = []
+                for dname, ddata in disciplines.items():
+                    new_list.append({dname: ddata})
+                return {program_name: new_list}
+
+            return program
+        except Exception:
+            return program
 
     def format_comparison_result_for_graphs(self, target_program: Dict, other_programs: List[Dict]) -> Dict:
         comparison_result = self.compare_programs(target_program, other_programs)
