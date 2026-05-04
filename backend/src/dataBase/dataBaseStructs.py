@@ -14,6 +14,10 @@ class Topic(BaseModel):
     """Структура тем в учебной программе"""
     educationalUnits: List[str]
 
+class ProgramReference(BaseModel):
+    university_name: str
+    program_name: str
+
 class WorkProgram(BaseModel):
     """Структура POST:/add-program, которую должна получать серверная часть от клиентской
         {

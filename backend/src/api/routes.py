@@ -8,6 +8,7 @@ from src.rdf.rdf_controller import RdfController
 from src.services.auth_service import AuthService
 from src.services.program_service import ProgramService
 from src.services.graph_service import GraphService
+from src.services.compare_service import EducationProgramCompareService
 from typing import Any
 
 router = APIRouter()
@@ -77,3 +78,16 @@ async def add_program_from_files(
     program_service = ProgramService(db, rdf)
     status_code, content = await program_service.add_program_from_files(files, university_name, program_name, id_user)
     return JSONResponse(status_code=status_code, content=content)
+
+@router.post("/compare_graphs")
+async def compare_graphs(
+    id_user: int = Form(...),
+    university_name: str = Form(...),
+    program_name: str = Form(...),
+    compare_programs: List[ProgramReference],
+    db: DataBaseController = Depends(get_db), 
+    rdf: RdfController = Depends(get_rdf)
+):
+    compare_service = EducationProgramCompareService()
+
+
