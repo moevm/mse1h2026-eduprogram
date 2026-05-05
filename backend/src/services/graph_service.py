@@ -199,6 +199,7 @@ class GraphService:
     
         if sequence_score < 0.75 and sequence_score >= 0.3 and self.gigachat:
             try:
+                return 0.0
                 llm_result = self.gigachat.check_subtopic_similarity(left, right)
                 if llm_result:
                     return 0.9
