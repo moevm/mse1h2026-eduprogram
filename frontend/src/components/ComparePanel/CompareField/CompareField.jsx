@@ -63,8 +63,19 @@ const CompareField = ({ nodes, edges }) => {
     }, [nodes, edges]);
 
     return (
-        <div className="graph-field-shell">
-            <div ref={cyRef} className="graph-field" />
+        <div>
+            <div className="graph-field-shell">
+                <div ref={cyRef} className="graph-field" />
+            </div>
+            <div className="thermometr">
+                <ul className="thermometr-list">
+                    <li>100</li>
+                    <li>75</li>
+                    <li>50</li>
+                    <li>25</li>
+                    <li>0</li>
+                </ul>
+            </div>
         </div>
     );
 };

@@ -15,8 +15,14 @@ const ComparePanel = ({ data }) => {
 
     const getColorByOverlap = (value) => {
         const v = Math.max(0, Math.min(100, Number(value)));
-        const red = Math.round(255 * (1 - v / 100));
-        const green = Math.round(255 * (v / 100));
+        let red, green;
+        if (v <= 50) {
+            red = 255;
+            green = Math.round(255 * (v / 50));
+        } else {
+            red = Math.round(255 * (1 - (v - 50) / 50));
+            green = 255;
+        }
         return `rgb(${red}, ${green}, 0)`;
     };
 
