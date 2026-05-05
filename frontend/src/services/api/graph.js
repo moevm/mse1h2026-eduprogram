@@ -30,9 +30,10 @@ const normalizeTopics = (topicsRaw) => {
         return acc;
       }
 
-      Object.entries(topicItem).forEach(([topicName, subtopics]) => {
+      Object.entries(topicItem).forEach(([topicName, topicData]) => {
+        const subtopicsObj = topicData?.subtopics || {};
         acc[topicName] = {
-          subtopics: Array.isArray(subtopics) ? subtopics : [],
+          subtopics: subtopicsObj,
         };
       });
 
@@ -64,10 +65,19 @@ const buildGraphDataFromProgram = (programJson) => {
     const topicsObject = normalizeTopics(disciplineData?.topics);
 
     const topics = Object.keys(topicsObject);
-    const topicsWithSubtopics = Object.entries(topicsObject).map(([topicName, topicData]) => ({
-      name: topicName,
-      subtopics: Array.isArray(topicData?.subtopics) ? topicData.subtopics : [],
-    }));
+    const topicsWithSubtopics = Object.entries(topicsObject).map(([topicName, topicData]) => {
+      const subtopicsData = topicData?.subtopics;
+      let subtopicsList = [];
+      if (Array.isArray(subtopicsData)) {
+        subtopicsList = subtopicsData;
+      } else if (subtopicsData && typeof subtopicsData === 'object') {
+        subtopicsList = Object.keys(subtopicsData);
+      }
+      return {
+        name: topicName,
+        subtopics: subtopicsList,
+      };
+    });
 
     graphData[disciplineName] = {
       предметы_до: prev,
