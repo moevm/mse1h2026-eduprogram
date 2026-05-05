@@ -16,6 +16,20 @@ services:
       timeout: 5s
       retries: 20
 
+  rdf:
+    image: ontotext/graphdb:11.3.0
+    container_name: eduprogram-rdf
+    restart: unless-stopped
+    environment:
+      - GDB_HEAP_SIZE=2g
+      - GDB_MIN_MEM=1g
+      - GDB_MAX_MEM=2g
+    volumes:
+      - rdf_data:/opt/graphdb/home
+      - ./backend/src/rdf/.rdf.license:/opt/graphdb/home/conf/graphdb.license:ro
+    ports:
+      - "7200:7200"
+
   backend:
     build:
       context: .
@@ -33,17 +47,21 @@ services:
       DB_MIN_CONN_NUMBER: 1
       DB_MAX_CONN_NUMBER: 10
       LOCAL_PATH_TO_STORAGE: /app/storage
+      GRAPHDB_HOST: rdf
+      GRAPHDB_PORT: ${GRAPHDB_PORT}
+      GRAPHDB_USER: ${GRAPHDB_USER}
+      GRAPHDB_PASSWORD: ${GRAPHDB_PASSWORD}
+      GRAPHDB_REPOSITORY: ${GRAPHDB_REPOSITORY}
+      GIGACHAT_CLIENT_ID: ${GIGACHAT_CLIENT_ID}
+      GIGACHAT_AUTHORIZATION_KEY: ${GIGACHAT_AUTHORIZATION_KEY}
+      GIGACHAT_AUTH_CERT_PATH: ${GIGACHAT_AUTH_CERT_PATH}
     volumes:
       - backend_storage:/app/storage
     depends_on:
       db:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/docs' % os.getenv('APP_PORT', '8000'), timeout=3)\""]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
+      rdf:
+        condition: service_started
     ports:
       - "8000:8000"
 
@@ -65,3 +83,4 @@ services:
 volumes:
   db_data:
   backend_storage:
+  rdf_data:

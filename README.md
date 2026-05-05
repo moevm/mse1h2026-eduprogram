@@ -42,6 +42,7 @@ docker compose -f docker-compose.dev.yml up --build
 docker compose -f docker-compose.dev.yml down
 ```
 
+
 ## Переменные окружения (опционально)
 
 Можно создать файл `.env` в корне проекта, чтобы переопределить значения по умолчанию:

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FiUser } from 'react-icons/fi';
 import Button from './Button/Button';
 import Input from './Input';
-import Card from './Card';
+import Card from './Card/Card';
 import './LoginForm.css';
 
 import { login } from '../services/api/auth';
@@ -76,15 +76,13 @@ function LoginForm() {
           type="button"
           color="#000000"
           onClick={handleLogin}
-          width="260px"
-          height="43px"
           absolute={false}
         >
           Войти
         </Button>
 
-        <div className="register-text" onClick={handleRegisterClick}>
-          Зарегистрироваться
+        <div className="login-link-container" >
+          Нет аккаунта? <button className="log-button" onClick={handleRegisterClick}>Зарегистрироваться</button>
         </div>
       </Card>
     </div>

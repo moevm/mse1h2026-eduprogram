@@ -30,6 +30,9 @@ class DataBaseController:
         self.__tableParsers = "ParserType"
         self.__tableParsersFields = ["universityName", "parserType"]
 
+        self.__tableComparedGraphs = "comparedGraphs"
+        self.__tableComparedGraphsFields = ["hash", "id_user", "program_name", "compared_with_programs", "recommendations"]
+
     def openConnection(self) -> bool:
         """Метод создания пулла соединений"""
         if not self.__dbName:
@@ -283,3 +286,41 @@ class DataBaseController:
         if len(university) < 2:
             return None
         return university[1]
+
+    def addComparedGraph(self, hash: str, id_user: int, program_name: str, compared_with_programs: list,
+                         recommendations: list) -> bool:
+        """Метода добавления графа с анализом.
+           Возвращает true, если граф был успешно добавлен.
+           program_name необходимо передавать в формате: university: program.
+           По аналогии для каждой программы из compared_with_programs"""
+        fields = ", ".join(self.__tableComparedGraphsFields)
+        compared_with_programs_for_query = f"{{{', '.join(compared_with_programs)}}}"
+        request = f"INSERT INTO {self.__tableComparedGraphs} ({fields}) VALUES (%s, %s, %s, %s, %s);"
+        args = (hash, id_user, program_name, compared_with_programs_for_query, recommendations)
+        return self.__insertOperation(request, args)
+
+    def findComparedGraphsByUserId(self, id_user: int) -> list:
+        """Метод нахождения списка графов по id пользователя."""
+        request = f"SELECT * FROM {self.__tableComparedGraphs} WHERE id_user = %s"
+        args = (id_user,)
+
+        result = self.__findOperation(request, args)
+        return result
+
+    def findComparedGraphsByHash(self, hash: str) -> tuple | None:
+        """Метод нахождения графа по hash."""
+        request = f"SELECT * FROM {self.__tableComparedGraphs} WHERE hash = %s"
+        args = (hash,)
+
+        result = self.__findOperation(request, args)
+        if not result:
+            return None
+        return result[0]
+
+    def getAllGraphs(self) -> list:
+        """Метод получения всех графов таблицы."""
+        request = f"SELECT * FROM {self.__tableComparedGraphs}"
+        args = ()
+
+        result = self.__findOperation(request, args)
+        return result

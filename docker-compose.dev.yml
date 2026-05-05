@@ -16,6 +16,20 @@ services:
       timeout: 5s
       retries: 20
 
+  rdf:
+    image: ontotext/graphdb:11.3.0
+    container_name: eduprogram-rdf
+    restart: unless-stopped
+    environment:
+      - GDB_HEAP_SIZE=2g
+      - GDB_MIN_MEM=1g
+      - GDB_MAX_MEM=2g
+    volumes:
+      - rdf_data:/opt/graphdb/home
+      - ./backend/src/rdf/.rdf.license:/opt/graphdb/home/conf/graphdb.license:ro
+    ports:
+      - "7200:7200"
+
   backend:
     build:
       context: .

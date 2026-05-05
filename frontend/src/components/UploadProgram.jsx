@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import "./UploadProgram.css";
+import Input from "./Input";
+import Button from "./Button/Button";
 
 // Настройки IndexedDB
 const dbName = "ProgramFilesDB";
@@ -67,6 +69,9 @@ export default function UploadProgram() {
   const [university, setUniversity] = useState("");
   const inputRef = useRef();
   const [arrayUniversities, setArrayUniversities] = useState([]);
+  const [programName, setProgramName] = useState("");
+  const isProgramNameValid = programName.trim().length > 0;
+  const [programTouched, setProgramTouched] = useState(false);
 
   // Загрузка сохраненных файлов и университета
   useEffect(() => {
@@ -162,6 +167,12 @@ export default function UploadProgram() {
 
   // Отправка формы
   const handleSubmit = async () => {
+    if (!isProgramNameValid) {
+      setProgramTouched(true);
+      alert("Пожалуйста, введите название программы");
+      return;
+    }
+
     if (!university) {
       alert("Пожалуйста, выберите университет");
       return;
@@ -175,6 +186,7 @@ export default function UploadProgram() {
     files.forEach((file) => formData.append("files", file));
     formData.append("university_name", university);
     formData.append("id_user", localStorage.getItem("userId"));
+    formData.append("program_name", programName.trim());
 
     try {
       const response = await fetch(
@@ -184,7 +196,9 @@ export default function UploadProgram() {
           body: formData,
         }
       );
-      if (response.ok) alert("Отправлено!");
+      if (response.ok) {
+        alert("Отправлено!");
+      }
       else alert("Ошибка при отправке");
     } catch (error) {
       console.error("Ошибка:", error);
@@ -196,6 +210,22 @@ export default function UploadProgram() {
     <div className="wrapper">
       <div className="card">
         <h2>Загрузка рабочей программы</h2>
+
+        <div className="program-name-wrapper">
+          <Input
+            type="text"
+            placeholder="Название программы"
+            value={programName}
+            onChange={(e) => setProgramName(e.target.value)}
+            onBlur={() => setProgramTouched(true)}
+            required
+            icon="settings"
+          />
+
+          {programTouched && !isProgramNameValid && (
+            <div className="program-name-hint">Введите название программы, это обязательное поле</div>
+          )}
+        </div>
 
         {/* Выбор университета */}
         <select
@@ -242,9 +272,9 @@ export default function UploadProgram() {
           </ul>
         )}
 
-        <button onClick={handleSubmit} className="button">
+        <Button onClick={handleSubmit} disabled={!isProgramNameValid}>
           Отправить
-        </button>
+        </Button>
       </div>
     </div>
   );
