@@ -84,7 +84,7 @@
     right: 30px;
     width: 50px;
     height: fit-content;
-    background: linear-gradient(#ff1f1f, #ffb96a, #76ff4e);
+    background: linear-gradient(#76ff4e, #ffb96a, #ff1f1f);
     border-radius: 15px;
     padding: 5px 0;
 }
