@@ -97,11 +97,15 @@ const buildGraphDataFromProgram = (programJson) => {
   return graphData;
 };
 
-export const fetchGraphData = async (userId, programFolder) => {
+export const fetchGraphData = async (userId, programFolder, universityName) => {
   const params = new URLSearchParams({
     userId: String(userId),
     pathToProgramFolder: programFolder,
   });
+
+  if (universityName) {
+    params.set('universityName', universityName);
+  }
 
   const response = await fetch(`${API_BASE_URL}/show-graph?${params.toString()}`);
   if (!response.ok) {
