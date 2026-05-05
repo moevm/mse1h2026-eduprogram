@@ -218,13 +218,12 @@ const MainPage = () => {
         throw new Error(`HTTP ${response.status}`);
       }
 
-      const data = response.json();
+      const data = await response.json();
+      localStorage.setItem('compareData', JSON.stringify(data));
       setIsCompareOpen(false);
       setCompareError('');
 
-      navigate('/compare', {
-        state: { data }
-      });
+      navigate('/compare');
     } catch (error) {
       console.error('Ошибка сравнения программ:', error);
       setCompareError('Не удалось отправить запрос на сравнение программ');
