@@ -10,9 +10,14 @@ from config.links import Links
 class UploadProgramsPage(BasePage):
     PAGE_URL = Links.UPLOAD_PROGRAMS
 
+    PROGRAM_NAME_INPUT = ("xpath", "//input[@placeholder='Название программы']")
     SELECT_UNIVERSITIES = ("xpath", "//select")
     FILE_INPUT = ("xpath", "//input[@type='file']")
-    SEND_BUTTON = ("xpath", "//button[text()='Отправить']")
+    SEND_BUTTON = ("xpath", "//button[child::span[text()='Отправить']]")
+
+    def enter_program_name(self, program_name: str):
+        PROGRAM_NAME_INPUT_EL = self.wait.until(EC.visibility_of_element_located(self.PROGRAM_NAME_INPUT))
+        PROGRAM_NAME_INPUT_EL.send_keys(program_name)
 
     def get_select_options(self):
         DROPDOWN_EL = Select(self.wait.until(EC.element_to_be_clickable(self.SELECT_UNIVERSITIES)))

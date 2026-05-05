@@ -1,4 +1,18 @@
-1. ДЛЯ ЗАПУСКА ТЕСТОВ НУЖНО В env В ДИРЕКТОРИИ С ТЕСТАМИ(test) ДОБАВИТЬ ТОЧКУ: .env. ДАННЫЕ ПОДТЯГИВАЮТСЯ ДЛЯ ТЕСТОВ ОТТУДА
+1. ДЛЯ ЗАПУСКА ТЕСТОВ НУЖНО В ДИРЕКТОРИИ С ТЕСТАМИ(test_client и test_api) ДОБАВИТЬ СЛЕДУЮЩИЕ ФАЙЛЫ: .env. ДАННЫЕ ПОДТЯГИВАЮТСЯ ДЛЯ ТЕСТОВ ОТТУДА
+
+.env ДЛЯ test_client:
+
+LOGIN=test_register_user@mail.ru
+PASSWORD=1234
+FILE=/test_client/test_data/spbu_test.pdf
+
+
+.env ДЛЯ test_api:
+
+LOGIN=test_register_user@mail.ru
+PASSWORD=1234
+HOST=http://0.0.0.0:8000
+USERID=1
 
 2. ТЕСТЫ ЗАПУСКАЮТСЯ ИЗ КОРНЕВОЙ ДИРЕКТОРИИ ПРОЕКТА /mse1h2026-eduprogram
 

@@ -23,6 +23,8 @@ class TestAddYourProgram(BaseTest):
         self.main_page.click_add_your_program_button()
         self.upload_programs_page.is_opened()
 
+        self.upload_programs_page.enter_program_name("test_program_name")
+
         self.upload_programs_page.select_by_name("СПБПУ")
         self.upload_programs_page.input_file_by_path(self.data.FILE)
         self.upload_programs_page.click_send_button()
