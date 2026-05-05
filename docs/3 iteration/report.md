@@ -1,4 +1,5 @@
 ## Описание проекта со сценариями использования доступно по [ссылке](https://github.com/moevm/mse1h2026-eduprogram/blob/reports/docs/3%20iteration/readme.md)
 ## Описание технических решений доступно по [ссылке](https://github.com/moevm/mse1h2026-eduprogram/blob/reports/docs/3%20iteration/technical_solutions.md)
 ## Описание получения сертификатов, лицензий и пр. доступно по [ссылке](https://github.com/moevm/mse1h2026-eduprogram/blob/reports/docs/3%20iteration/credits.md)
-## Инструкция по запуску проекта доступно по [ссылке](https://github.com/moevm/mse1h2026-eduprogram/blob/reports/docs/3%20iteration/start.md)
+## Инструкция по запуску проекта доступна по [ссылке](https://github.com/moevm/mse1h2026-eduprogram/blob/reports/docs/3%20iteration/start.md)
+## Инструкция по запуску тестов доступна по [ссылке](https://github.com/moevm/mse1h2026-eduprogram/blob/reports/docs/3%20iteration/tests.md)
