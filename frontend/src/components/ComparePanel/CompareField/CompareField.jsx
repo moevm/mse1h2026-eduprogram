@@ -23,15 +23,16 @@ const CompareField = ({ nodes, edges }) => {
                         'label': 'data(label)',
                         'text-valign': 'center',
                         'text-halign': 'center',
-                        'background-color': 'data(color)',
-                        'color': '#000',
-                        'font-size': '10px',
-                        'text-wrap': 'wrap',
-                        'text-max-width': '80px',
+                        'shape': 'round-rectangle',
                         'width': 'label',
                         'height': 'label',
-                        'padding': '10px',
-                        'shape': 'roundrectangle'
+                        'padding': '12px',
+                        'font-size': '12px',
+                        'color': '#000000',
+                        'font-weight': 600,
+                        'text-max-width': 200,
+                        'background-color': 'data(color)',
+                        'text-wrap': 'wrap',
                     }
                 },
                 {

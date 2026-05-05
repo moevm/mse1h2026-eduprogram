@@ -14,3 +14,49 @@
     font-size: 18px;
     color: #999;
 }
+
+.recommendations-drawer {
+    display: flex;
+    flex-direction:  column;
+    gap: 10px;
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 320px;
+    height: 100%;
+    background: #fff;
+    z-index: 1000;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.2);
+    padding: 20px;
+    overflow-y: auto;
+    transform: translateX(100%);
+    animation: slideIn 0.25s ease forwards;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.recommendations-drawer ul {
+    margin-top: 10px;
+    padding-left: 18px;
+}
+
+.recommendations-drawer li {
+    margin-bottom: 8px;
+    font-size: 14px;
+}

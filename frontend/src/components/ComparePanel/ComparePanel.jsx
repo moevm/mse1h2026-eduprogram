@@ -1,13 +1,17 @@
+import React, { useMemo, useState } from 'react';
 import CompareNavbar from './CompareNavbar/CompareNavbar';
 import CompareAside from './CompareAside/CompareAside';
-import CompareField from './GraphField/CompareField';
+import CompareField from './CompareField/CompareField';
 import './ComparePanel.css';
+import Button from "../Button/Button";
 
 const ComparePanel = ({ data }) => {
+    const [visible, setVisible] = useState(false);
 
-    if (!data) {
-        return <div className="graph-panel-empty">Данные графа не загружены</div>;
-    }
+
+    const recommendations = Array.isArray(data?.Recomendations)
+        ? data.Recomendations
+        : [];
 
     const getColorByOverlap = (value) => {
         const v = Math.max(0, Math.min(100, Number(value)));
@@ -21,8 +25,9 @@ const ComparePanel = ({ data }) => {
         const edges = [];
 
         Object.entries(data).forEach(([programName, disciplines]) => {
-
-            if (programName === "Recomendations") return;
+            if (programName === "Recomendations") {
+                return;
+            }
 
             nodes.push({
                 data: {
@@ -107,15 +112,41 @@ const ComparePanel = ({ data }) => {
         return { nodes, edges };
     };
 
-    const { nodes, edges } = buildGraph();
+    const { nodes, edges } = useMemo(() => {
+        if (!data) return { nodes: [], edges: [] };
+        return buildGraph();
+    }, [data]);
+
+    if (!data) {
+        return <div className="graph-panel-empty">Данные графа не загружены</div>;
+    }
 
     return (
         <>
             <CompareNavbar />
             <div className="graph-panel">
-                <CompareAside />
+                <CompareAside showRecommendations={() => setVisible(prev => !prev)} />
                 <CompareField nodes={nodes} edges={edges} />
             </div>
+            {visible && (
+                <div className="recommendations-drawer">
+                    <Button onClick={() => setVisible(prev => !prev)}>
+                        Скрыть рекомендации
+                    </Button>
+                    <div>
+                        <h3>Рекомендации</h3>
+                        {recommendations.length === 0 ? (
+                            <p>Нет рекомендаций</p>
+                        ) : (
+                            <ul>
+                                {recommendations.map((rec, index) => (
+                                    <li key={index}>{rec || '—'}</li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                </div>
+            )}
         </>
     );
 };

@@ -19,7 +19,7 @@ function App() {
         <Route path="/work_program" element={< WorkProgramPage/>} />
         <Route path="/graph" element={<GraphPage />} />
         <Route path="/main" element={< MainPage/>} />
-        <Route path="/compare_graphs" element={<ComparePage/>}/>
+        <Route path="/compare" element={<ComparePage/>}/>
         <Route path="/upload_programs" element={< UploadProgram/>}/>
       </Routes>
     </BrowserRouter>
