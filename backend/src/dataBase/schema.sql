@@ -31,3 +31,11 @@ CREATE TABLE IF NOT EXISTS ParserType (
     universityName  VARCHAR(255) PRIMARY KEY,
     parserType  INT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS comparedGraphs (
+    hash VARCHAR(1024) PRIMARY KEY,
+    id_user INT NOT NULL,
+    program_name VARCHAR(255) NOT NULL,
+    compared_with_programs VARCHAR(255)[] NOT NULL,
+    recommendations VARCHAR(1024)[] NOT NULL
+);
