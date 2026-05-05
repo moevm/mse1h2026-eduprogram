@@ -27,7 +27,6 @@ class TestDefault(BaseTest):
         assert set(response.json().get("available-universities")) == self.data.universities
 
     @mark.order(4)
-    @mark.skip(reason="Необходимо перейти на новую версию проекта для запуска этого теста")
     def test_add_program(self):
         response = self.api_users.add_program()
 
@@ -35,7 +34,7 @@ class TestDefault(BaseTest):
         assert response.json()
 
     @mark.order(5)
-    @mark.skip(reason="Необходимо перейти на новую версию проекта для запуска этого теста")
+    @mark.skip(reason="---")
     def test_get_programs(self):
         response = self.api_users.get_programs()
 

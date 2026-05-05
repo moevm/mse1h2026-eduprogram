@@ -57,6 +57,6 @@ class DefaultAPI:
     def get_programs(self):
         response = requests.get(
             url=self.endopints.get_programs,
-            headers = {"userId" : Data.user_id}
+            headers = {"userId" : str(Data.user_id)}
         )
         return response
