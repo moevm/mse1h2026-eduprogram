@@ -54,7 +54,7 @@ def getCertainProgram(userId: int, pathToProgramFolder: str, universityName: str
                       db: DataBaseController = Depends(get_db),
                       rdf: RdfController = Depends(get_rdf)):
     """Метод получения графа учебной программы."""
-    graph_service = GraphService(db, rdf)
+    graph_service = GraphService(db, None, rdf)
     status_code, content = graph_service.get_certain_program(userId, pathToProgramFolder, universityName)
     return JSONResponse(status_code=status_code, content=content)
 
