@@ -10,11 +10,12 @@ const ComparePage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-        useEffect(() => {
-        if (location.state?.data) {
-            setCompareData(location.state.data);
-            setLoading(false);
-        }
+    useEffect(async () => {
+        const rawData = localStorage.getItem("compareData");
+        const data = await JSON.parse(rawData);
+
+        setCompareData(data);
+        setLoading(false);
     }, [location.state]);
 
     if (loading) {
