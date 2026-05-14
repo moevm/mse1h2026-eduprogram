@@ -3,7 +3,7 @@ import Button from '../../Button/Button';
 import NavbarSelect from "../../NavbarSelect/NavbarSelect";
 import './CompareNavbar.css';
 
-export default function CompareNavbar() {
+export default function CompareNavbar({ onSectionChange }) {
     return (
         <nav className="graph-navbar">
             <div className="navbar-start">
@@ -13,9 +13,9 @@ export default function CompareNavbar() {
             <div className="navbar-end">
                 <NavbarSelect
                     options={[
-                        { label: "Граф", value: "graph", onClick: (v) => console.log(v) },
-                        { label: "Мосты", value: "bridges", onClick: (v) => console.log(v) },
-                        { label: "Отчет", value: "report", onClick: (v) => console.log(v) },
+                        { label: "Граф", value: "graph", onClick: () => onSectionChange?.('graph') },
+                        { label: "Мосты", value: "bridges", onClick: () => onSectionChange?.('bridges') },
+                        { label: "Отчет", value: "report", onClick: () => onSectionChange?.('report') },
                     ]}
                 />
 
