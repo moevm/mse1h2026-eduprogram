@@ -240,7 +240,7 @@ const MainPage = () => {
 
   return (
     <>
-      <Navbar/>
+      <Navbar showAuthButtons={false} showLogoutButton={true} />
       <main className="main-page-center">
         <Button
           onClick={fetchPrograms}

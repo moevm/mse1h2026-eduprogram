@@ -1,9 +1,12 @@
 import React from 'react';
 import Button from '../../Button/Button';
 import NavbarSelect from "../../NavbarSelect/NavbarSelect";
+import { useLogout } from '../../../hooks/useLogout';
 import './CompareNavbar.css';
 
 export default function CompareNavbar({ onSectionChange }) {
+    const handleLogout = useLogout();
+
     return (
         <nav className="graph-navbar">
             <div className="navbar-start">
@@ -19,7 +22,7 @@ export default function CompareNavbar({ onSectionChange }) {
                     ]}
                 />
 
-                <Button onClick={() => {}}>
+                <Button onClick={handleLogout}>
                     Выйти
                 </Button>
             </div>
