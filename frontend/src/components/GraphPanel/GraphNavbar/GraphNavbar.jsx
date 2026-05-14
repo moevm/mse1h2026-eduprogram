@@ -15,7 +15,6 @@ export default function GraphNavbar() {
                     options={[
                         { label: "Граф", value: "graph", onClick: (v) => console.log(v) },
                         { label: "Мосты", value: "bridges", onClick: (v) => console.log(v) },
-                        { label: "Отчет", value: "report", onClick: (v) => console.log(v) },
                     ]}
                 />
 
