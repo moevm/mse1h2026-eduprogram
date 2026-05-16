@@ -36,7 +36,7 @@ export default function Navbar({ showAuthButtons = true, showLogoutButton = fals
           ) : null}
 
           {showLogoutButton ? (
-            <Button onClick={handleLogout}>
+            <Button className="navbar-logout-button" onClick={handleLogout}>
               Выйти
             </Button>
           ) : null}

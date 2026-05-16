@@ -22,7 +22,7 @@ export default function CompareNavbar({ onSectionChange }) {
                     ]}
                 />
 
-                <Button onClick={handleLogout}>
+                <Button className="navbar-logout-button" onClick={handleLogout}>
                     Выйти
                 </Button>
             </div>
