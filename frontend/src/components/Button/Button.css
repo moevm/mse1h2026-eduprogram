@@ -23,6 +23,11 @@
 .custom-button span {
   position: relative;
   z-index: 2;
+  display: block;
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.2;
 }
 
 .custom-button::after {
