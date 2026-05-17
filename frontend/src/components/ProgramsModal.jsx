@@ -24,7 +24,7 @@ const ProgramsModal = ({ isOpen, onClose, programs, onShowGraph }) => {
                 height="43px"
                 absolute={false}
                 >
-                  <p className="text-program">Показать граф программы</p>
+                  <span className="text-program">Показать граф программы</span>
                 </Button>
               </li>
             ))}
@@ -34,12 +34,11 @@ const ProgramsModal = ({ isOpen, onClose, programs, onShowGraph }) => {
         <Button
         className="close-button"
         type="button"
-        color="#2058c7"
         onClick={onClose}
         width="260px"
         height="43px"
         >
-          <p className="text-program">Закрыть</p>
+          <span className="text-program">Закрыть</span>
         </Button>
       </div>
 

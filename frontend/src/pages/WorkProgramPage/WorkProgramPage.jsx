@@ -6,7 +6,7 @@ import Navbar from "../../components/Navbar/Navbar";
 const WorkProgramPage = () => {
   return (
     <>
-        <Navbar/>
+                <Navbar showAuthButtons={false} showLogoutButton={true} />
         <div className="work-program-page">
             <div className="page-header">
                 <h2>Рабочая программа</h2>
