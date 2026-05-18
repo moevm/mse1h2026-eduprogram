@@ -3,11 +3,10 @@ import CompareNavbar from './CompareNavbar/CompareNavbar';
 import CompareAside from './CompareAside/CompareAside';
 import CompareField from './CompareField/CompareField';
 import './ComparePanel.css';
-import Button from "../Button/Button";
+import Button from '../Button/Button';
 
 const ComparePanel = ({ data }) => {
-    const [visible, setVisible] = useState(false);
-
+    const [isRecommendationsOpen, setIsRecommendationsOpen] = useState(false);
 
     const recommendations = Array.isArray(data?.Recomendations)
         ? data.Recomendations
@@ -127,16 +126,20 @@ const ComparePanel = ({ data }) => {
         return <div className="graph-panel-empty">Данные графа не загружены</div>;
     }
 
+    const handleSectionChange = (section) => {
+        setIsRecommendationsOpen(section === 'report');
+    };
+
     return (
         <>
-            <CompareNavbar />
+            <CompareNavbar onSectionChange={handleSectionChange} />
             <div className="graph-panel">
-                <CompareAside showRecommendations={() => setVisible(prev => !prev)} />
+                <CompareAside />
                 <CompareField nodes={nodes} edges={edges} />
             </div>
-            {visible && (
+            {isRecommendationsOpen && (
                 <div className="recommendations-drawer">
-                    <Button onClick={() => setVisible(prev => !prev)}>
+                    <Button onClick={() => setIsRecommendationsOpen(false)}>
                         Скрыть рекомендации
                     </Button>
                     <div>

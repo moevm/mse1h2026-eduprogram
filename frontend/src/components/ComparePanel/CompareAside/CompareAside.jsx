@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import "./CompareAside.css"
 import Button from "../../Button/Button";
 
-const CompareAside = ({ showRecommendations }) => {
+
+const CompareAside = () => {
     const [formats, setFormats] = useState([]);
     const [selected, setSelected] = useState('');
     const [downloading, setDownloading] = useState(false);
@@ -78,9 +79,7 @@ const CompareAside = ({ showRecommendations }) => {
             <Button type="button" onClick={() => { navigate('/main'); }}>
                 Назад
             </Button>
-            <Button type="button" onClick={showRecommendations}>
-                Рекомендации
-            </Button>
+
 
             <div className="formats-panel">
                 <select value={selected} onChange={handleChange}>
