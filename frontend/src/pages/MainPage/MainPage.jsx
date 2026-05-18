@@ -275,6 +275,44 @@ const MainPage = () => {
     }
   };
 
+
+
+  const fetchHistoryGraph = async (hash) => {
+    if (!Number.isInteger(userId) || userId <= 0) {
+      alert('Пользователь не авторизован. Войдите заново.');
+      throw new Error('User not authorized');
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/get-history-graph?userId=${userId}&hash=${hash}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      localStorage.setItem('compareData', JSON.stringify(data));
+
+      navigate('/compare');
+
+      return data;
+    } catch (error) {
+      console.error('Ошибка загрузки результата сравнения:', error);
+      alert('Не удалось загрузить результат сравнения');
+      throw error;
+    }
+  };
+
+
+  // Обработчик выбора элемента из истории
+  const handleViewHistoryResult = async (historyItem) => {
+    // Закрываем модальное окно истории
+    setIsHistoryOpen(false);
+
+    // Загружаем данные графа по hash
+    await fetchHistoryGraph(historyItem.hash);
+  };
   const handleSelectHistoryItem = (item) => {
     console.log(item.hash, " ", item.program_name);
 
@@ -362,7 +400,7 @@ const MainPage = () => {
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
         historyData={historyData}
-        onShowHistory={handleSelectHistoryItem}
+        onViewResult={handleViewHistoryResult}
       />
     </>
   );

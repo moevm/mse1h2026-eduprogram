@@ -73,3 +73,46 @@
 .graph-aside__controls .custom-button {
     width: 100% !important;
 }
+
+/* Объединенные стили для formats-panel */
+.formats-panel {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 12px 0;
+    padding: 8px;
+    background: #ffffff;
+    border: 1px solid #cfcfcf;
+    border-radius: 12px;
+    width: 100%;
+    min-width: 0; /* Для правильного сжатия */
+}
+
+.formats-panel select {
+    flex: 1;
+    min-width: 0; /* Позволяет select сжиматься */
+    width: auto;
+    padding: 8px 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    background-color: #fafafa;
+    border: 1px solid #d5d5d5;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.formats-panel select:hover {
+    border-color: #000000;
+}
+
+.formats-panel select:focus {
+    outline: none;
+    border-color: #000000;
+}
+
+.formats-panel button {
+    flex-shrink: 0; /* Кнопка не сжимается */
+    min-width: 40px !important;
+    width: auto !important;
+    padding: 8px 12px !important;
+}

@@ -1,14 +1,19 @@
-import './HistoryModal.css';
+import React, { useState } from 'react';
 import Button from '../components/Button/Button';
+import './HistoryModal.css';
 
-const HistoryModal = ({ isOpen, onClose, historyData, onShowHistory }) => {
+const HistoryModal = ({ isOpen, onClose, historyData, onViewResult }) => {
+  const [loadingHash, setLoadingHash] = useState(null);
+
   if (!isOpen) return null;
 
-  const handleShowHistory = (item) => {
-    if (onShowHistory) {
-      onShowHistory(item);
+  const handleViewResult = async (item) => {
+    setLoadingHash(item.hash);
+    try {
+      await onViewResult(item);
+    } finally {
+      setLoadingHash(null);
     }
-    onClose();
   };
 
   return (
@@ -28,19 +33,22 @@ const HistoryModal = ({ isOpen, onClose, historyData, onShowHistory }) => {
                   </span>
                   {item.hash && (
                     <span className="text-program program-hash">
-                      {item.hash.substring(0, 20)}...
+                      Hash: {item.hash.substring(0, 16)}...
                     </span>
                   )}
                 </div>
                 <Button
                   type="button"
                   color="#000000"
-                  onClick={() => handleShowHistory(item)}
-                  width="160px"
+                  onClick={() => handleViewResult(item)}
+                  width="200px"
                   height="43px"
                   absolute={false}
+                  disabled={loadingHash === item.hash}
                 >
-                  <p className="text-program">Просмотр</p>
+                  <p className="text-program">
+                    {loadingHash === item.hash ? 'Загрузка...' : 'Посмотреть результат сравнения'}
+                  </p>
                 </Button>
               </li>
             ))}
