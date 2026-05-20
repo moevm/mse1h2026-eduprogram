@@ -81,7 +81,7 @@ class RdfController:
         return graphId
 
     def export_graph_as_file(self, graphId: str, fileFormat: str) -> BytesIO | None:
-        """Возможные значения fileFormat: x-trig"""
+        """Возможные значения fileFormat: x-trig, ld+json"""
         if not self.db or not self.repository:
             return None
 

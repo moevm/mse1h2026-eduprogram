@@ -66,6 +66,21 @@ def getAvailableUniversities(db: DataBaseController = Depends(get_db)):
     status_code, content = program_service.get_available_universities()
     return JSONResponse(status_code=status_code, content=content)
 
+@router.get("/get-available-export-formats")
+def getAvailableUniversities():
+    """Метод получения списка доступных форматов для экспорта."""
+    program_service = GraphService(None, None, None)
+    status_code, content = program_service.get_available_export_formats()
+    return JSONResponse(status_code=status_code, content=content)
+
+@router.get("/download-graph")
+def downloadGraph(format: str, graphId: str, db: DataBaseController = Depends(get_db),
+                             rdf: RdfController = Depends(get_rdf)):
+    """Метод получения списка доступных форматов для экспорта."""
+    program_service = GraphService(db, None, rdf)
+    response = program_service.get_export_file(format, graphId)
+    return response
+
 
 @router.post("/add-program-from-files")
 async def add_program_from_files(
