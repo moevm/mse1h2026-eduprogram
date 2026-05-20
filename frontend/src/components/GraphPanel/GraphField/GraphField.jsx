@@ -81,7 +81,7 @@ const GraphField = forwardRef(({
         return visible;
     }, []);
 
-    const applyVisibility = useCallback((cy, expanded, selected, hidden) => {
+    const applyVisibility = useCallback((cy, expanded, selected, hidden, shouldFit = false) => {
         if (!cy || cy.destroyed()) return;
         if (layoutRunningRef.current) return;
 
@@ -151,11 +151,13 @@ const GraphField = forwardRef(({
             layoutRunningRef.current = false;
             if (cy && !cy.destroyed()) {
                 cy.resize();
-                cy.animate({
-                    fit: { eles: visibleNodes, padding: 40 },
-                    duration: 200,
-                    easing: 'ease-in-out'
-                });
+                if (shouldFit) {
+                    cy.animate({
+                        fit: { eles: visibleNodes, padding: 40 },
+                        duration: 200,
+                        easing: 'ease-in-out'
+                    });
+                }
             }
         });
 
@@ -465,7 +467,7 @@ const GraphField = forwardRef(({
             requestAnimationFrame(() => {
                 if (cy && !cy.destroyed()) {
                     cy.resize();
-                    applyVisibility(cy, expandedNodesRef.current, selectedNodeIdsRef.current, hiddenNodeIds);
+                    applyVisibility(cy, expandedNodesRef.current, selectedNodeIdsRef.current, hiddenNodeIds, true);
                 }
             });
 
@@ -493,14 +495,14 @@ const GraphField = forwardRef(({
     // ===== РЕАКЦИЯ НА ИЗМЕНЕНИЕ expandedNodes =====
     useEffect(() => {
         if (!cyRef.current || cyRef.current.destroyed()) return;
-        applyVisibility(cyRef.current, expandedNodes, selectedNodeIds, hiddenNodeIds);
+        applyVisibility(cyRef.current, expandedNodes, selectedNodeIds, hiddenNodeIds, false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [expandedNodes]);
 
     // ===== РЕАКЦИЯ НА ИЗМЕНЕНИЕ selectedNodeIds / hiddenNodeIds =====
     useEffect(() => {
         if (!cyRef.current || cyRef.current.destroyed()) return;
-        applyVisibility(cyRef.current, expandedNodes, selectedNodeIds, hiddenNodeIds);
+        applyVisibility(cyRef.current, expandedNodes, selectedNodeIds, hiddenNodeIds, false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedNodeIds, hiddenNodeIds]);
 
