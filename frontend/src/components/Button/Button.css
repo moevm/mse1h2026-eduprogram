@@ -12,6 +12,7 @@
   font-family: "Inter", sans-serif;
   font-size: 16px;
   font-weight: 300;
+  line-height: 1;
   cursor: pointer;
   background-color: black;
 
@@ -23,6 +24,13 @@
 .custom-button span {
   position: relative;
   z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  line-height: 1;
 }
 
 .custom-button::after {
@@ -52,4 +60,14 @@
 
 .custom-button:disabled::after {
   opacity: 0;
+}
+
+.navbar-logout-button {
+  width: auto;
+  min-width: 120px;
+  height: 43px;
+  padding: 12px 30px;
+  border-radius: 15px;
+  box-sizing: border-box;
+  white-space: nowrap;
 }

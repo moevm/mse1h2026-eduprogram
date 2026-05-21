@@ -10,12 +10,30 @@ const ComparePage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    useEffect(async () => {
-        const rawData = localStorage.getItem("compareData");
-        const data = await JSON.parse(rawData);
+    useEffect(() => {
+        const loadCompareData = () => {
+            try {
+                const rawData = localStorage.getItem('compareData');
 
-        setCompareData(data);
-        setLoading(false);
+                if (!rawData) {
+                    setError('Данные сравнения не найдены. Вернитесь на главную и запустите сравнение заново.');
+                    setCompareData(null);
+                    return;
+                }
+
+                const data = JSON.parse(rawData);
+                setCompareData(data);
+                setError('');
+            } catch (loadError) {
+                console.error('Failed to load compare data:', loadError);
+                setError('Не удалось загрузить данные сравнения.');
+                setCompareData(null);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadCompareData();
     }, [location.state]);
 
     if (loading) {
