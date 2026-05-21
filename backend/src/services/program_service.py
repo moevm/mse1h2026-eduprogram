@@ -348,6 +348,38 @@ class ProgramService:
             }
         )
 
+    def get_history(self, user_id: int):
+        if not self.db and not self.db.isConnected():
+            return (
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"responseMessage": "DataBase connect error!"}
+            )
+        resultListPrograms = self.db.findComparedGraphsByUserId(user_id)
+        resultResponseStruct = {"compared-programs": []}
+        for program in resultListPrograms:
+            resultResponseStruct["compared-programs"].append({
+                "program_name": program[2],
+                "hash": program[0]
+            })
+        return (
+            status.HTTP_200_OK,
+            resultResponseStruct
+        )
+
+    def get_history_graph(self, user_id: int, hash: str):
+        if not self.rdf:
+            return (
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"responseMessage": "Rdf error!"}
+            )
+        resultGraph = self.rdf.get_data_of_graph(hash)
+        return (
+            status.HTTP_200_OK,
+            resultGraph
+        )
+
+
+
     def get_programs(self, user_id: int) -> Tuple[int, Dict[str, Any]]:
         """Получение списка программ пользователя."""
         if not self.db.isConnected():

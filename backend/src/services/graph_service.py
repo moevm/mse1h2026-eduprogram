@@ -1,8 +1,12 @@
 from typing import Tuple, Dict, Any, Optional, List, Set
-from fastapi import status
+from fastapi import status, Response
+from fastapi.responses import JSONResponse
 from pathlib import Path
 import os
 import json
+from docx import Document
+from io import BytesIO
+import fitz
 import re
 from difflib import SequenceMatcher
 from src.dataBase.dataBaseController import DataBaseController
@@ -20,6 +24,106 @@ class GraphService:
         self.rdf = rdf
         self.path_storage = Path(os.getenv('LOCAL_PATH_TO_STORAGE'))
         self.gigachat = GigachatMatcher(llm)
+
+        """Словарь, который преобразует название формата в его представление для api"""
+        self._availableExportFormats = {
+            "TriG": "x-trig",
+            "JSON-LD": "ld+json",
+            "Turtle": "x-turtle",
+            "RDF-XML": "rdf+xml",
+            "N-Triples": "n-triples"
+        }
+
+        self._fileExtensions = {
+            "TriG": "trig",
+            "JSON-LD": "jsonld",
+            "Turtle": "ttl",
+            "RDF-XML": "xml",
+            "N-Triples": "nt"
+        }
+
+    def get_available_export_formats(self) -> Tuple[int, Dict[str, Any]]:
+        return (
+            status.HTTP_200_OK,
+            {"available-export-formats": list(self._availableExportFormats.keys())}
+        )
+
+    def get_export_file(self, format: str, graphId: str) -> Response:
+        if not self.rdf:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "No rdf"}
+            )
+
+        if format not in self._availableExportFormats and format not in self._fileExtensions:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "Unknown format"}
+            )
+
+        exportFile = self.rdf.export_graph_as_file(graphId, self._availableExportFormats[format])
+        if not exportFile:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "Can't export file"}
+            )
+        return Response(
+            content=exportFile.getvalue(),
+            media_type=f"application/{self._availableExportFormats[format]}",
+            status_code=status.HTTP_200_OK,
+            headers={
+                "Content-Disposition": f"attachment; filename={graphId}.{self._fileExtensions[format]}"
+            }
+        )
+
+    def get_report_file(self, format: str, graphId: str) -> Response:
+        if not self.db and not self.db.isConnected:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "No db"}
+            )
+
+        result = self.db.findComparedGraphsByHash(graphId)
+        if not result:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "Error with graphId"}
+            )
+
+        if format not in ("docx", "pdf"):
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "Unknown format"}
+            )
+
+        doc = Document()
+        recommendations = result[4]
+        for rec in recommendations:
+            doc.add_paragraph(rec)
+
+        reportFile = BytesIO()
+        doc.save(reportFile)
+        reportFile.seek(0)
+
+        if format == "pdf":
+            pdfDoc = fitz.open(stream=reportFile, filetype="docx")
+            pdfBytes = pdfDoc.convert_to_pdf()
+            pdfDoc.close()
+            reportFile = BytesIO(pdfBytes)
+
+        if not reportFile:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "Can't export file"}
+            )
+        return Response(
+            content=reportFile.getvalue(),
+            media_type=f"application/{format}",
+            status_code=status.HTTP_200_OK,
+            headers={
+                "Content-Disposition": f"attachment; filename={graphId}.{format}"
+            }
+        )
 
     @staticmethod
     def _resolve_university_and_program(path_to_program_folder: str,
@@ -196,7 +300,7 @@ class GraphService:
                 return max(0.75, token_score)
 
         sequence_score = SequenceMatcher(None, left_norm, right_norm).ratio()
-    
+
         if sequence_score < 0.75 and sequence_score >= 0.3 and self.gigachat:
             try:
                 return 0.0
@@ -205,7 +309,7 @@ class GraphService:
                     return 0.9
             except Exception as e:
                 print(f"LLM check failed for '{left}' vs '{right}': {e}")
-    
+
         return sequence_score
 
     def _best_subtopic_overlap(self, target_subtopic: str, compare_programs: List[Dict[str, Any]]) -> int:
@@ -229,10 +333,10 @@ class GraphService:
         return int(round((matched_programs / len(compare_programs)) * 100))
 
     def _find_missing_subtopics(
-                            self, 
-                            target_program: Dict[str, Any], 
-                            compare_payloads: List[Dict[str, Any]],
-                            threshold: int = 70
+            self,
+            target_program: Dict[str, Any],
+            compare_payloads: List[Dict[str, Any]],
+            threshold: int = 70
     ) -> List[Tuple[str, str, int]]:
         """
         Находит подтемы из сравниваемых программ, отсутствующие в целевой.
@@ -242,15 +346,15 @@ class GraphService:
         target_all_subtopics: Set[str] = set()
         for subtopics in target_index.values():
             target_all_subtopics.update(subtopics)
-    
+
         from collections import Counter
-    
+
         foreign_subtopic_counts: Dict[str, Tuple[int, str]] = {}  # subtopic -> (count, discipline)
-    
+
         for compare_program in compare_payloads:
             program_name = next(iter(compare_program.keys()), "")
             compare_index = self._extract_subtopics_index(compare_program)
-        
+
             for discipline_name, subtopics in compare_index.items():
                 for candidate in subtopics:
                     found_in_target = False
@@ -258,22 +362,22 @@ class GraphService:
                         if self._subtopic_similarity(candidate, target_subtopic) >= 0.75:
                             found_in_target = True
                             break
-                
+
                     if not found_in_target:
                         if candidate not in foreign_subtopic_counts:
                             foreign_subtopic_counts[candidate] = [0, discipline_name]
                         foreign_subtopic_counts[candidate][0] += 1
-    
+
         total_programs = len(compare_payloads)
-    
+
         missing: List[Tuple[str, str, int]] = []
         for subtopic, (count, discipline) in foreign_subtopic_counts.items():
             overlap_percent = int(round((count / total_programs) * 100))
             if overlap_percent >= threshold:
                 missing.append((subtopic, discipline, overlap_percent))
-    
+
         missing.sort(key=lambda x: x[2], reverse=True)
-    
+
         return missing
 
     def compare_graphs(self, user_id: int, university_name: str, program_name: str,
@@ -282,6 +386,11 @@ class GraphService:
             return (
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
                 {"responseMessage": "RDF repository is not available"}
+            )
+        if not self.db:
+            return (
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"responseMessage": "DB is not available"}
             )
         target_program = self.rdf.get_data_of_university_and_program(university_name, program_name, user_id)
         target_program = self._normalize_program_structure(target_program)
@@ -344,17 +453,36 @@ class GraphService:
         missing_subtopics = self._find_missing_subtopics(target_program, compare_payloads, threshold=70)
         for subtopic_name, discipline_name, overlap_percent in missing_subtopics:
             recommendations.append(
-            f"Учебная единица '{subtopic_name}' (встречается в {overlap_percent}% "
-            f"сравниваемых программ, дисциплина '{discipline_name}') отсутствует "
-            f"в целевой программе — рекомендуется добавить"
-        )
+                f"Учебная единица '{subtopic_name}' (встречается в {overlap_percent}% "
+                f"сравниваемых программ, дисциплина '{discipline_name}') отсутствует "
+                f"в целевой программе — рекомендуется добавить"
+            )
 
         if not recommendations:
             recommendations.append("Сравнение выполнено, явных расхождений не найдено")
 
+        graphID = self.rdf.add_program(university_name, {target_program_name: formatted_disciplines}, user_id, True, True)
+        if not graphID:
+            return (
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"responseMessage": "Error in add program to rdf"}
+            )
+
+        comparedProgramsStr = []
+        for program in compare_programs:
+            comparedProgramsStr.append(f"{program.university_name}/{program.program_name}")
+        resultAdd = self.db.addComparedGraph(graphID, user_id, f"{university_name}/{program_name}",
+                                             comparedProgramsStr, recommendations)
+        if not resultAdd:
+            return (
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"responseMessage": "Error in save program to db"}
+            )
+
         return (
             status.HTTP_200_OK,
             {
+                "graphId": graphID,
                 target_program_name: formatted_disciplines,
                 "Recomendations": recommendations,
             }
