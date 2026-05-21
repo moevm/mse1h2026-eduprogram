@@ -1,8 +1,12 @@
 from typing import Tuple, Dict, Any, Optional, List, Set
 from fastapi import status, Response
+from fastapi.responses import JSONResponse
 from pathlib import Path
 import os
 import json
+from docx import Document
+from io import BytesIO
+import fitz
 import re
 from difflib import SequenceMatcher
 from src.dataBase.dataBaseController import DataBaseController
@@ -46,20 +50,20 @@ class GraphService:
 
     def get_export_file(self, format: str, graphId: str) -> Response:
         if not self.rdf:
-            return Response(
+            return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={"responseMessage": "No rdf"}
             )
 
         if format not in self._availableExportFormats and format not in self._fileExtensions:
-            return Response(
+            return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={"responseMessage": "Unknown format"}
             )
 
         exportFile = self.rdf.export_graph_as_file(graphId, self._availableExportFormats[format])
         if not exportFile:
-            return Response(
+            return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={"responseMessage": "Can't export file"}
             )
@@ -69,6 +73,55 @@ class GraphService:
             status_code=status.HTTP_200_OK,
             headers={
                 "Content-Disposition": f"attachment; filename={graphId}.{self._fileExtensions[format]}"
+            }
+        )
+
+    def get_report_file(self, format: str, graphId: str) -> Response:
+        if not self.db and not self.db.isConnected:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "No db"}
+            )
+
+        result = self.db.findComparedGraphsByHash(graphId)
+        if not result:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "Error with graphId"}
+            )
+
+        if format not in ("docx", "pdf"):
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "Unknown format"}
+            )
+
+        doc = Document()
+        recommendations = result[4]
+        for rec in recommendations:
+            doc.add_paragraph(rec)
+
+        reportFile = BytesIO()
+        doc.save(reportFile)
+        reportFile.seek(0)
+
+        if format == "pdf":
+            pdfDoc = fitz.open(stream=reportFile, filetype="docx")
+            pdfBytes = pdfDoc.convert_to_pdf()
+            pdfDoc.close()
+            reportFile = BytesIO(pdfBytes)
+
+        if not reportFile:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "Can't export file"}
+            )
+        return Response(
+            content=reportFile.getvalue(),
+            media_type=f"application/{format}",
+            status_code=status.HTTP_200_OK,
+            headers={
+                "Content-Disposition": f"attachment; filename={graphId}.{format}"
             }
         )
 
@@ -418,7 +471,8 @@ class GraphService:
         comparedProgramsStr = []
         for program in compare_programs:
             comparedProgramsStr.append(f"{program.university_name}/{program.program_name}")
-        resultAdd = self.db.addComparedGraph(graphID, user_id, program_name, comparedProgramsStr, recommendations)
+        resultAdd = self.db.addComparedGraph(graphID, user_id, f"{university_name}/{program_name}",
+                                             comparedProgramsStr, recommendations)
         if not resultAdd:
             return (
                 status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -67,7 +67,7 @@ def getAvailableUniversities(db: DataBaseController = Depends(get_db)):
     return JSONResponse(status_code=status_code, content=content)
 
 @router.get("/get-available-export-formats")
-def getAvailableUniversities():
+def getAvailableExportFormats():
     """Метод получения списка доступных форматов для экспорта."""
     program_service = GraphService(None, None, None)
     status_code, content = program_service.get_available_export_formats()
@@ -76,10 +76,31 @@ def getAvailableUniversities():
 @router.get("/download-graph")
 def downloadGraph(format: str, graphId: str, db: DataBaseController = Depends(get_db),
                              rdf: RdfController = Depends(get_rdf)):
-    """Метод получения списка доступных форматов для экспорта."""
+    """Скачивание графа"""
     program_service = GraphService(db, None, rdf)
     response = program_service.get_export_file(format, graphId)
     return response
+
+@router.get("/download-report")
+def downloadGraph(format: str, graphId: str, db: DataBaseController = Depends(get_db), rdf: RdfController = Depends(get_rdf)):
+    """Скачивание отчета"""
+    program_service = GraphService(db, None, rdf)
+    response = program_service.get_report_file(format, graphId)
+    return response
+
+@router.get("/get-history")
+def getHistory(user_id: int, db: DataBaseController = Depends(get_db)):
+    """Метод истории сравнений."""
+    program_service = ProgramService(db)
+    status_code, content = program_service.get_history(user_id)
+    return JSONResponse(status_code=status_code, content=content)
+
+@router.get("/get-history-graph")
+def getHistoryGraph(user_id: int, hash: str, rdf: RdfController = Depends(get_rdf)):
+    """Метод истории сравнений."""
+    program_service = ProgramService(None, rdf)
+    status_code, content = program_service.get_history_graph(user_id, hash)
+    return JSONResponse(status_code=status_code, content=content)
 
 
 @router.post("/add-program-from-files")
