@@ -22,6 +22,7 @@ const ComparePage = () => {
                 }
 
                 const data = JSON.parse(rawData);
+                console.log(data);
                 setCompareData(data);
                 setError('');
             } catch (loadError) {

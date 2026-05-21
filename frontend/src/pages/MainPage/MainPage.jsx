@@ -88,8 +88,9 @@ const MainPage = () => {
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-
+    
     const data = await response.json();
+    
     return normalizePrograms(data.programs || []);
   };
 
@@ -224,9 +225,11 @@ const MainPage = () => {
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
-
       const data = await response.json();
-      localStorage.setItem('compareData', JSON.stringify(data));
+      localStorage.setItem('graph_id', data.graphId)
+      delete data.graphId;
+      const jsonData = JSON.stringify(data);
+      localStorage.setItem('compareData', jsonData);
       setIsCompareOpen(false);
       setCompareError('');
 
@@ -246,24 +249,15 @@ const MainPage = () => {
     setHistoryLoading(true);
 
     try {
-      // const response = await fetch(`${API_BASE_URL}/get-history?userId=${userId}`);
+      const response = await fetch(`${API_BASE_URL}/get-history?user_id=${userId}`);
 
-      // if (!response.ok) {
-      //   throw new Error(`HTTP ${response.status}`);
-      // }
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
 
-      // const data = await response.json();
-      // const comparedPrograms = data["compared-programs"] || [];
-      const comparedPrograms = [
-        {
-          "program_name": "Название программы1",
-          "hash": "012345678901234567890123456789"
-        },
-        {
-          "program_name": "Название программы2",
-          "hash": "012345678901234567890123456789"
-        }
-      ];
+      const data = await response.json();
+      const comparedPrograms = data["compared-programs"] || [];
+
       setHistoryData(comparedPrograms);
       setIsHistoryOpen(true);
 
@@ -284,7 +278,7 @@ const MainPage = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/get-history-graph?userId=${userId}&hash=${hash}`);
+      const response = await fetch(`${API_BASE_URL}/get-history-graph?user_id=${userId}&hash=${hash}`);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -313,18 +307,7 @@ const MainPage = () => {
     // Загружаем данные графа по hash
     await fetchHistoryGraph(historyItem.hash);
   };
-  const handleSelectHistoryItem = (item) => {
-    console.log(item.hash, " ", item.program_name);
-
-    // localStorage.setItem('compareData', JSON.stringify({
-    //   hash: item.hash,
-    //   program_name: item.program_name,
-    // }));
-
-    setIsHistoryOpen(false);
-    // navigate('/compare');
-  };
-
+  
   const handleAddProgram = () => {
     navigate('/work_program');
   };
