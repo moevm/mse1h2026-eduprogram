@@ -16,16 +16,13 @@ const CompareAside = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        // fetch(`${API_BASE_URL}/get-avaliable-export-formats`)
-        //     .then(res => res.json())
-        //     .then(data => {
-        //         setFormats(data["avaliable-export-formats"] || []);
-        //     })
-        //     .catch(err => console.error('Ошибка:', err));
-        setFormats([
-            "TriG",
-            "JSON-ND"
-        ])
+        fetch(`${API_BASE_URL}/get-available-export-formats`)
+            .then(res => res.json())
+            .then(data => {
+                setFormats(data["available-export-formats"] || []);
+            })
+            .catch(err => console.error('Ошибка:', err));
+      
     }, [API_BASE_URL]);
 
     const handleChange = (e) => {
@@ -37,7 +34,7 @@ const CompareAside = () => {
         setDownloading(true);
 
         try {
-            const response = await fetch(`${API_BASE_URL}/${endpoint}?format=${format}`, {
+            const response = await fetch(`${API_BASE_URL}/${endpoint}?format=${format}&graphId=${localStorage.getItem('graph_id')}`, {
                 method: 'GET',
             });
 
