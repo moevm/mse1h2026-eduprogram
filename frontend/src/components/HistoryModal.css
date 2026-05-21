@@ -1,0 +1,86 @@
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    min-width: 200px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80%;
+    overflow: auto;
+}
+
+.title-window {
+    font-family: 'Inter', sans-serif;
+    margin-top: 0;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.text-program {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+}
+
+ul {
+    padding: 0;
+    list-style: none;
+    margin: 0 0 15px 0;
+}
+
+li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    margin: 5px 0;
+    background: #f5f5f5;
+    border-radius: 4px;
+    gap: 10px;
+}
+
+.history-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow: hidden;
+}
+
+.program-name {
+    font-weight: 500;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.program-hash {
+    font-size: 11px;
+    color: #888;
+    font-family: monospace;
+}
+
+.close-button {
+    margin-top: 10px;
+}
+
+li Button {
+    flex-shrink: 0;
+}
+
+li Button p {
+    margin: 0;
+}

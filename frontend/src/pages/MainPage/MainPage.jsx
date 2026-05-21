@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProgramsModal from '../../components/ProgramsModal';
 import CompareProgramsModal from '../../components/CompareProgramsModal';
+import HistoryModal from '../../components/HistoryModal';
 import Button from '../../components/Button/Button';
 import Navbar from "../../components/Navbar/Navbar";
 import "./MainPage.css"
@@ -17,6 +18,12 @@ const MainPage = () => {
   const [selectedMainProgramId, setSelectedMainProgramId] = useState('');
   const [selectedCompareProgramIds, setSelectedCompareProgramIds] = useState([]);
   const userId = Number(localStorage.getItem('userId'));
+
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyData, setHistoryData] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+
 
   const domain = process.env.REACT_APP_API_URL_GET_PROGRAMMS || process.env.REACT_APP_API_URL || 'localhost:8000';
   const API_BASE_URL = domain.startsWith('http') ? domain : `http://${domain}`;
@@ -230,6 +237,94 @@ const MainPage = () => {
     }
   };
 
+  const fetchShowHistory = async () => {
+    if (!Number.isInteger(userId) || userId <= 0) {
+      alert('Пользователь не авторизован. Войдите заново.');
+      return;
+    }
+
+    setHistoryLoading(true);
+
+    try {
+      // const response = await fetch(`${API_BASE_URL}/get-history?userId=${userId}`);
+
+      // if (!response.ok) {
+      //   throw new Error(`HTTP ${response.status}`);
+      // }
+
+      // const data = await response.json();
+      // const comparedPrograms = data["compared-programs"] || [];
+      const comparedPrograms = [
+        {
+          "program_name": "Название программы1",
+          "hash": "012345678901234567890123456789"
+        },
+        {
+          "program_name": "Название программы2",
+          "hash": "012345678901234567890123456789"
+        }
+      ];
+      setHistoryData(comparedPrograms);
+      setIsHistoryOpen(true);
+
+    } catch (error) {
+      console.error('Ошибка загрузки истории:', error);
+      alert('Не удалось загрузить историю сравнений');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+
+
+  const fetchHistoryGraph = async (hash) => {
+    if (!Number.isInteger(userId) || userId <= 0) {
+      alert('Пользователь не авторизован. Войдите заново.');
+      throw new Error('User not authorized');
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/get-history-graph?userId=${userId}&hash=${hash}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      localStorage.setItem('compareData', JSON.stringify(data));
+
+      navigate('/compare');
+
+      return data;
+    } catch (error) {
+      console.error('Ошибка загрузки результата сравнения:', error);
+      alert('Не удалось загрузить результат сравнения');
+      throw error;
+    }
+  };
+
+
+  // Обработчик выбора элемента из истории
+  const handleViewHistoryResult = async (historyItem) => {
+    // Закрываем модальное окно истории
+    setIsHistoryOpen(false);
+
+    // Загружаем данные графа по hash
+    await fetchHistoryGraph(historyItem.hash);
+  };
+  const handleSelectHistoryItem = (item) => {
+    console.log(item.hash, " ", item.program_name);
+
+    // localStorage.setItem('compareData', JSON.stringify({
+    //   hash: item.hash,
+    //   program_name: item.program_name,
+    // }));
+
+    setIsHistoryOpen(false);
+    // navigate('/compare');
+  };
+
   const handleAddProgram = () => {
     navigate('/work_program');
   };
@@ -240,6 +335,7 @@ const MainPage = () => {
 
   return (
     <>
+
       <Navbar showAuthButtons={false} showLogoutButton={true} />
       <main className="main-page-center">
         <Button
@@ -258,23 +354,31 @@ const MainPage = () => {
           Добавить программу
         </Button>
         <Button
-            onClick={handleManualAdd}
-            width="260px"
-            height="43px"
+          onClick={handleManualAdd}
+          width="260px"
+          height="43px"
         >
           Добавить свою программу
         </Button>
         <Button
-            onClick={handleComparePrograms}
-            width="260px"
-            height="43px"
-            disabled={compareLoading}
+          onClick={handleComparePrograms}
+          width="260px"
+          height="43px"
+          disabled={compareLoading}
         >
           {compareLoading ? 'Загрузка...' : 'Сравнить программы'}
         </Button>
+        <Button
+          onClick={fetchShowHistory}
+          width="260px"
+          height="43px"
+          disabled={compareLoading}
+        >
+          {compareLoading ? 'Загрузка...' : 'История сравнения'}
+        </Button>
       </main>
 
-      <ProgramsModal 
+      <ProgramsModal
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
         programs={programs}
@@ -293,8 +397,12 @@ const MainPage = () => {
         error={compareError}
         canCompare={compareCandidates.length > 0}
       />
-
-
+      <HistoryModal
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        historyData={historyData}
+        onViewResult={handleViewHistoryResult}
+      />
     </>
   );
 };
