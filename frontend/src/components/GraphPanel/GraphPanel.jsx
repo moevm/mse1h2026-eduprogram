@@ -78,10 +78,13 @@ const GraphPanel = ({ data }) => {
 
   // ========== Expand / Collapse ==========
   const handleToggleExpand = useCallback((nodeId) => {
+    const children = childrenMap[nodeId] || [];
+    if (children.length === 0) return;
+
+    const willExpand = !expandedNodes.has(nodeId);
+
     setExpandedNodes((prev) => {
       const next = new Set(prev);
-      const children = childrenMap[nodeId] || [];
-      if (children.length === 0) return prev;
 
       if (next.has(nodeId)) {
         const removeRecursive = (parentId) => {
@@ -95,7 +98,15 @@ const GraphPanel = ({ data }) => {
       }
       return next;
     });
-  }, [childrenMap]);
+
+    // При раскрытии — возвращаем скрытых прямых детей
+    if (willExpand) {
+      const childSet = new Set(children);
+      setHiddenNodeIds((prev) =>
+        prev.length === 0 ? prev : prev.filter((id) => !childSet.has(id))
+      );
+    }
+  }, [childrenMap, expandedNodes]);
 
   const handleExpandAll = useCallback(() => {
     const allParents = new Set();
@@ -105,10 +116,12 @@ const GraphPanel = ({ data }) => {
       }
     });
     setExpandedNodes(allParents);
+    setHiddenNodeIds([]);
   }, [childrenMap]);
 
   const handleCollapseAll = useCallback(() => {
     setExpandedNodes(new Set());
+    setHiddenNodeIds([]);
   }, []);
 
   // ========== Export ==========
@@ -164,6 +177,34 @@ const GraphPanel = ({ data }) => {
     return Array.from(cascadeNodeIds);
   }, [nodeOptions]);
 
+  // ========== Hide / Show selected ==========
+  // Скрывает то, что отходит от выделенных (сами выделенные узлы остаются видимыми)
+  const handleHideSelected = useCallback(() => {
+    if (selectedNodeIds.length === 0) return;
+    const selectedSet = new Set(selectedNodeIds);
+    const toHide = getCascadeNodeIds(selectedNodeIds).filter(
+      (id) => !selectedSet.has(id)
+    );
+    if (toHide.length === 0) return;
+    setHiddenNodeIds((prev) => Array.from(new Set([...prev, ...toHide])));
+  }, [selectedNodeIds, getCascadeNodeIds]);
+
+  // Показывает то, что было скрыто и отходит от выделенных узлов
+  const handleShowFromSelected = useCallback(() => {
+    if (selectedNodeIds.length === 0) return;
+    const cascade = new Set(getCascadeNodeIds(selectedNodeIds));
+    setHiddenNodeIds((prev) => prev.filter((id) => !cascade.has(id)));
+    setExpandedNodes((prev) => {
+      const next = new Set(prev);
+      cascade.forEach((id) => {
+        if (childrenMap[id] && childrenMap[id].length > 0) {
+          next.add(id);
+        }
+      });
+      return next;
+    });
+  }, [selectedNodeIds, getCascadeNodeIds, childrenMap]);
+
   if (!data) {
     return <div className="graph-panel-empty">Данные графа не загружены</div>;
   }
@@ -175,6 +216,9 @@ const GraphPanel = ({ data }) => {
           <GraphAside
               onExpandAll={handleExpandAll}
               onCollapseAll={handleCollapseAll}
+              onHideSelected={handleHideSelected}
+              onShowFromSelected={handleShowFromSelected}
+              hasSelection={selectedNodeIds.length > 0}
           />
           <GraphField
               ref={graphFieldRef}

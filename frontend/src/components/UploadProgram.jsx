@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import "./UploadProgram.css";
-import Input from "./Input";
-import Button from "./Button/Button";
+import Input from "./UI/Input/Input";
+import Button from "./UI/Button/Button";
+import Modal from "./UI/Modal/Modal";
 
 // Настройки IndexedDB
 const dbName = "ProgramFilesDB";
@@ -59,7 +60,7 @@ const loadFilesFromDB = async () => {
   });
 };
 
-export default function UploadProgram() {
+export default function UploadProgram({ isOpen, onClose }) {
   const domain =
     process.env.REACT_APP_API_URL_GET_PROGRAMMS ||
     process.env.REACT_APP_API_URL ||
@@ -165,6 +166,20 @@ export default function UploadProgram() {
     setFiles(files.filter((_, i) => i !== index));
   };
 
+  // Очистка всех загруженных файлов
+  const clearFiles = () => {
+    setFiles([]);
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+  };
+
+  // Закрытие окна — сбрасываем файлы
+  const handleClose = () => {
+    clearFiles();
+    onClose();
+  };
+
   // Отправка формы
   const handleSubmit = async () => {
     if (!isProgramNameValid) {
@@ -198,6 +213,7 @@ export default function UploadProgram() {
       );
       if (response.ok) {
         alert("Отправлено!");
+        handleClose();
       }
       else alert("Ошибка при отправке");
     } catch (error) {
@@ -207,10 +223,14 @@ export default function UploadProgram() {
   };
 
   return (
-    <div className="wrapper">
-      <div className="card">
-        <h2>Загрузка рабочей программы</h2>
-
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Загрузка рабочей программы"
+      showClose
+      size="small"
+    >
+      <div className="upload-program-body">
         <div className="program-name-wrapper">
           <Input
             type="text"
@@ -272,10 +292,18 @@ export default function UploadProgram() {
           </ul>
         )}
 
-        <Button onClick={handleSubmit} disabled={!isProgramNameValid}>
-          Отправить
-        </Button>
+        <div className="upload-actions">
+          <Button
+            onClick={clearFiles}
+            disabled={files.length === 0}
+          >
+            Очистить файлы
+          </Button>
+          <Button onClick={handleSubmit} disabled={!isProgramNameValid}>
+            Отправить
+          </Button>
+        </div>
       </div>
-    </div>
+    </Modal>
   );
 }

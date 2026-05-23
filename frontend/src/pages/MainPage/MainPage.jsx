@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import ProgramsModal from '../../components/ProgramsModal';
 import CompareProgramsModal from '../../components/CompareProgramsModal';
 import HistoryModal from '../../components/HistoryModal';
-import Button from '../../components/Button/Button';
+import Button from '../../components/UI/Button/Button';
 import Navbar from "../../components/Navbar/Navbar";
+import TreeEditor from '../../components/TreeEditor';
+import UploadProgram from '../../components/UploadProgram';
 import "./MainPage.css"
 
 const MainPage = () => {
@@ -22,6 +24,9 @@ const MainPage = () => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyData, setHistoryData] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
 
 
 
@@ -309,56 +314,65 @@ const MainPage = () => {
   };
   
   const handleAddProgram = () => {
-    navigate('/work_program');
+    setIsEditorOpen(true);
   };
 
   const handleManualAdd = () => {
-    navigate('/upload_programs');
+    setIsUploadOpen(true);
   };
 
   return (
     <>
 
       <Navbar showAuthButtons={false} showLogoutButton={true} />
-      <main className="main-page-center">
-        <Button
-          onClick={fetchPrograms}
-          width="260px"
-          height="43px"
-          disabled={loading}
-        >
-          {loading ? 'Загрузка...' : 'Выберите рабочую программу'}
-        </Button>
-        <Button
-          onClick={handleAddProgram}
-          width="260px"
-          height="43px"
-        >
-          Добавить программу
-        </Button>
-        <Button
-          onClick={handleManualAdd}
-          width="260px"
-          height="43px"
-        >
-          Добавить свою программу
-        </Button>
-        <Button
-          onClick={handleComparePrograms}
-          width="260px"
-          height="43px"
-          disabled={compareLoading}
-        >
-          {compareLoading ? 'Загрузка...' : 'Сравнить программы'}
-        </Button>
-        <Button
-          onClick={fetchShowHistory}
-          width="260px"
-          height="43px"
-          disabled={compareLoading}
-        >
-          {compareLoading ? 'Загрузка...' : 'История сравнения'}
-        </Button>
+      <main className="main-page">
+        <header className="main-hero">
+          <h1 className="main-title">Образовательные программы</h1>
+        </header>
+
+        <div className="main-grid ">
+          <section className="main-card">
+            <div className="main-card-header">
+              <h2 className="main-card-title">Сравнение</h2>
+              <span className="main-card-hint">Сопоставьте две и более программ</span>
+            </div>
+            <div className="main-card-actions">
+              <Button onClick={handleComparePrograms} disabled={compareLoading}>
+                {compareLoading ? 'Загрузка...' : 'Сравнить программы'}
+              </Button>
+              <Button onClick={fetchShowHistory} disabled={compareLoading}>
+                {compareLoading ? 'Загрузка...' : 'История сравнения'}
+              </Button>
+            </div>
+          </section>
+
+          <section className="main-card">
+            <div className="main-card-header">
+              <h2 className="main-card-title">Добавление</h2>
+              <span className="main-card-hint">Создайте или загрузите программу</span>
+            </div>
+            <div className="main-card-actions">
+              <Button onClick={handleAddProgram}>
+                Добавить программу
+              </Button>
+              <Button onClick={handleManualAdd}>
+                Добавить свою программу
+              </Button>
+            </div>
+          </section>
+        </div>
+
+        <section className="main-card">
+            <div className="main-card-header">
+              <h2 className="main-card-title">Просмотр</h2>
+              <span className="main-card-hint">Ваши программы и история</span>
+            </div>
+            <div className="main-card-actions">
+              <Button onClick={fetchPrograms} disabled={loading}>
+                {loading ? 'Загрузка...' : 'Выберите рабочую программу'}
+              </Button>
+            </div>
+          </section>
       </main>
 
       <ProgramsModal
@@ -385,6 +399,15 @@ const MainPage = () => {
         onClose={() => setIsHistoryOpen(false)}
         historyData={historyData}
         onViewResult={handleViewHistoryResult}
+      />
+
+      <TreeEditor
+        isOpen={isEditorOpen}
+        onClose={() => setIsEditorOpen(false)}
+      />
+      <UploadProgram
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
       />
     </>
   );

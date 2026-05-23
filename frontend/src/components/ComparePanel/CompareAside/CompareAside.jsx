@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import "./CompareAside.css"
-import Button from "../../Button/Button";
+import Button from "../../UI/Button/Button";
 
 
 const CompareAside = () => {
@@ -77,37 +77,42 @@ const CompareAside = () => {
                 Назад
             </Button>
 
+            <div className="graph-aside__divider" />
 
-            <div className="formats-panel">
-                <select value={selected} onChange={handleChange}>
-                    <option value="">Выберите формат</option>
-                    {formats.map((format, idx) => (
-                        <option key={idx} value={format}>{format}</option>
-                    ))}
-                </select>
+            <select className="formats-panel" value={selected} onChange={handleChange}>
+                <option value="">Выберите формат</option>
+                {formats.map((format, idx) => (
+                    <option key={idx} value={format}>{format}</option>
+                ))}
+            </select>
+            <Button
+                type="button"
+                onClick={() => downloadFile('download-graph', selected, `graph.${selected.toLowerCase()}`)}
+                disabled={!selected || downloading}
+            >
+                {downloading ? '⏳' : 'Скачать граф'}
+            </Button>
+
+            <div className="graph-aside__divider" />
+
+            <div className="report-download-section">
                 <Button
                     type="button"
-                    onClick={() => downloadFile('download-graph', selected, `graph.${selected.toLowerCase()}`)}
-                    disabled={!selected || downloading}
+                    onClick={() => downloadFile('download-report', 'pdf', 'report.pdf')}
+                    disabled={downloading}
                 >
-                    {downloading ? '⏳' : '⬆️'}
+                    PDF
+                </Button>
+
+                <Button
+                    type="button"
+                    onClick={() => downloadFile('download-report', 'docx', 'report.docx')}
+                    disabled={downloading}
+                >
+                    DOCX
                 </Button>
             </div>
-            <Button 
-                type="button"
-                onClick={() => downloadFile('download-report', 'pdf', 'report.pdf')}
-                disabled={downloading}
-            >
-                PDF
-            </Button>
-            
-            <Button 
-                type="button"
-                onClick={() => downloadFile('download-report', 'docx', 'report.docx')}
-                disabled={downloading}
-            >
-                DOCX
-            </Button>
+
         </aside>
     );
 };
