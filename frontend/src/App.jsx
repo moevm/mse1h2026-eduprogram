@@ -8,6 +8,7 @@ import './assets/styles/global.css';
 import MainPage from './pages/MainPage/MainPage';
 import UploadProgram from './components/UploadProgram';
 import ComparePage from "./pages/ComparePage/ComparePage";
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -16,11 +17,11 @@ function App() {
         <Route path="/" element={<LoginPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/work_program" element={< WorkProgramPage/>} />
-        <Route path="/graph" element={<GraphPage />} />
-        <Route path="/main" element={< MainPage/>} />
-        <Route path="/compare" element={<ComparePage/>}/>
-        <Route path="/upload_programs" element={< UploadProgram/>}/>
+        <Route path="/work_program" element={<ProtectedRoute><WorkProgramPage/></ProtectedRoute>} />
+        <Route path="/graph" element={<ProtectedRoute><GraphPage /></ProtectedRoute>} />
+        <Route path="/main" element={<ProtectedRoute><MainPage/></ProtectedRoute>} />
+        <Route path="/compare" element={<ProtectedRoute><ComparePage/></ProtectedRoute>}/>
+        <Route path="/upload_programs" element={<ProtectedRoute><UploadProgram/></ProtectedRoute>}/>
       </Routes>
     </BrowserRouter>
   );

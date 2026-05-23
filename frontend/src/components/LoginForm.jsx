@@ -6,7 +6,7 @@ import Input from './Input';
 import Card from './Card/Card';
 import './LoginForm.css';
 
-import { login } from '../services/api/auth';
+import { login, setToken } from '../services/api/auth';
 
 
 function LoginForm() {
@@ -26,8 +26,9 @@ function LoginForm() {
     const result = await login(email, password);
     
     if (result.success) {
-      if (result.id) {
-        localStorage.setItem('userId', String(result.id));
+      // сохранение JWT токена в localStorage
+     if (result.token) {
+        setToken(result.token);
       }
       localStorage.setItem('userLogin', email);
       navigate('/main');

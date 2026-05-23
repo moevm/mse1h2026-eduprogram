@@ -15,7 +15,7 @@ export const login = async (login, password) => {
     const body = await response.json().catch(() => ({}));
 
     if (response.status === 200) {
-      return { success: true, id: body.id };
+      return { success: true, token: body.token, id: body.id };
     }
     
     if (response.status === 401) {
@@ -50,7 +50,7 @@ export const register = async (login, password) => {
     const body = await response.json().catch(() => ({}));
 
     if (response.status === 201) {
-      return { success: true, id: body.id };
+      return { success: true, token: body.token, id: body.id };
     }
     
     if (response.status === 401) {
@@ -70,4 +70,43 @@ export const register = async (login, password) => {
   } catch (err) {
     return { success: false, error: 'Ошибка соединения' };
   }
+};
+
+/**
+ * получение JWT токена из localStorage
+ * @returns {string|null} JWT токен или null
+ */
+export const getToken = () => {
+  return localStorage.getItem('authToken');
+};
+
+/**
+ * сохранение JWT токена в localStorage
+ * @param {string} token - JWT токен
+ */
+export const setToken = (token) => {
+  localStorage.setItem('authToken', token);
+};
+
+/**
+ * удаление JWT токена из localStorage
+ */
+export const removeToken = () => {
+  localStorage.removeItem('authToken');
+};
+
+/**
+ * проверка авторизации пользователя по наличию JWT токена
+ * @returns {boolean} true если токен присутствует
+ */
+export const isAuthenticated = () => {
+  return !!getToken();
+};
+
+/**
+ * разлогинивание пользователя 
+ */
+export const logout = () => {
+  removeToken();
+  localStorage.removeItem('userLogin');
 };

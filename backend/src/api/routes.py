@@ -2,6 +2,7 @@ from fastapi import APIRouter, Body, Depends, status, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from src.dataBase.dependencies import get_db
 from src.rdf.dependencies import get_rdf
+from src.api.dependencies import get_current_user
 from src.dataBase.dataBaseStructs import User
 from src.dataBase.dataBaseController import DataBaseController
 from src.rdf.rdf_controller import RdfController
@@ -33,29 +34,35 @@ def registration(user: User, db: DataBaseController = Depends(get_db)):
 
 
 @router.post("/add-program")
-def addProgram(payload: Any = Body(...), db: DataBaseController = Depends(get_db),
+def addProgram(payload: Any = Body(...), user_id: int = Depends(get_current_user),
+               db: DataBaseController = Depends(get_db),
                rdf: RdfController = Depends(get_rdf)):
     """Метод добавления учебной программы."""
     program_service = ProgramService(db, rdf)
+    # установка user_id из токена
+    if isinstance(payload, dict):
+        payload["idUser"] = user_id
     status_code, content = program_service.add_program(payload)
     return JSONResponse(status_code=status_code, content=content)
 
 
 @router.get("/get-programs")
-def getPrograms(userId: int, db: DataBaseController = Depends(get_db), rdf: RdfController = Depends(get_rdf)):
+def getPrograms(user_id: int = Depends(get_current_user), db: DataBaseController = Depends(get_db), 
+                rdf: RdfController = Depends(get_rdf)):
     """Метод получения списка программ пользователя."""
     program_service = ProgramService(db, rdf)
-    status_code, content = program_service.get_programs(userId)
+    status_code, content = program_service.get_programs(user_id)
     return JSONResponse(status_code=status_code, content=content)
 
 
 @router.get("/show-graph")
-def getCertainProgram(userId: int, pathToProgramFolder: str, universityName: str | None = None,
+def getCertainProgram(user_id: int = Depends(get_current_user), pathToProgramFolder: str = None, 
+                      universityName: str | None = None,
                       db: DataBaseController = Depends(get_db),
                       rdf: RdfController = Depends(get_rdf)):
     """Метод получения графа учебной программы."""
     graph_service = GraphService(db, None, rdf)
-    status_code, content = graph_service.get_certain_program(userId, pathToProgramFolder, universityName)
+    status_code, content = graph_service.get_certain_program(user_id, pathToProgramFolder, universityName)
     return JSONResponse(status_code=status_code, content=content)
 
 
@@ -74,29 +81,33 @@ def getAvailableExportFormats():
     return JSONResponse(status_code=status_code, content=content)
 
 @router.get("/download-graph")
-def downloadGraph(format: str, graphId: str, db: DataBaseController = Depends(get_db),
-                             rdf: RdfController = Depends(get_rdf)):
+def downloadGraph(format: str, graphId: str, user_id: int = Depends(get_current_user),
+                  db: DataBaseController = Depends(get_db),
+                  rdf: RdfController = Depends(get_rdf)):
     """Скачивание графа"""
     program_service = GraphService(db, None, rdf)
     response = program_service.get_export_file(format, graphId)
     return response
 
 @router.get("/download-report")
-def downloadGraph(format: str, graphId: str, db: DataBaseController = Depends(get_db), rdf: RdfController = Depends(get_rdf)):
+def downloadReport(format: str, graphId: str, user_id: int = Depends(get_current_user),
+                   db: DataBaseController = Depends(get_db), 
+                   rdf: RdfController = Depends(get_rdf)):
     """Скачивание отчета"""
     program_service = GraphService(db, None, rdf)
     response = program_service.get_report_file(format, graphId)
     return response
 
 @router.get("/get-history")
-def getHistory(user_id: int, db: DataBaseController = Depends(get_db)):
+def getHistory(user_id: int = Depends(get_current_user), db: DataBaseController = Depends(get_db)):
     """Метод истории сравнений."""
     program_service = ProgramService(db)
     status_code, content = program_service.get_history(user_id)
     return JSONResponse(status_code=status_code, content=content)
 
 @router.get("/get-history-graph")
-def getHistoryGraph(user_id: int, hash: str, rdf: RdfController = Depends(get_rdf)):
+def getHistoryGraph(hash: str, user_id: int = Depends(get_current_user), 
+                    rdf: RdfController = Depends(get_rdf)):
     """Метод истории сравнений."""
     program_service = ProgramService(None, rdf)
     status_code, content = program_service.get_history_graph(user_id, hash)
@@ -108,27 +119,23 @@ async def add_program_from_files(
     files: list[UploadFile] = File(...),
     university_name: str = Form(...),
     program_name: str = Form(...),
-    id_user: int = Form(...),
+    user_id: int = Depends(get_current_user),
     db: DataBaseController = Depends(get_db),
     rdf: RdfController = Depends(get_rdf)
 ):
     """Метод добавления учебной программы из файлов."""
     program_service = ProgramService(db, rdf)
-    status_code, content = await program_service.add_program_from_files(files, university_name, program_name, id_user)
+    status_code, content = await program_service.add_program_from_files(files, university_name, program_name, user_id)
     return JSONResponse(status_code=status_code, content=content)
 
 
 @router.post("/compare_graphs")
-def compare_graphs(payload: Any = Body(...), db: DataBaseController = Depends(get_db),
+def compare_graphs(payload: Any = Body(...), user_id: int = Depends(get_current_user),
+                   db: DataBaseController = Depends(get_db),
                    rdf: RdfController = Depends(get_rdf)):
     """Сравнение графов программ по подтемам (educational units)."""
     try:
-        user_id = payload.get("user_id") or payload.get("idUser")
-        if user_id is None:
-            return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                                content={"responseMessage": "Field 'user_id' is required"})
-        user_id = int(user_id)
-
+        # использование user_id из токена
         university_name = payload.get("university_name")
         program_name = payload.get("program_name")
         compare_programs_raw = payload.get("compare_programs", []) or []

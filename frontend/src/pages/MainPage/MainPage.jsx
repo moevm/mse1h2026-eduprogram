@@ -6,6 +6,7 @@ import HistoryModal from '../../components/HistoryModal';
 import Button from '../../components/Button/Button';
 import Navbar from "../../components/Navbar/Navbar";
 import "./MainPage.css"
+import { fetchWithAuth } from '../../services/api/httpClient';
 
 const MainPage = () => {
   const navigate = useNavigate();
@@ -17,7 +18,6 @@ const MainPage = () => {
   const [compareError, setCompareError] = useState('');
   const [selectedMainProgramId, setSelectedMainProgramId] = useState('');
   const [selectedCompareProgramIds, setSelectedCompareProgramIds] = useState([]);
-  const userId = Number(localStorage.getItem('userId'));
 
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyData, setHistoryData] = useState([]);
@@ -84,7 +84,7 @@ const MainPage = () => {
   };
 
   const loadPrograms = async () => {
-    const response = await fetch(`${API_BASE_URL}/get-programs?userId=${userId}`);
+    const response = await fetchWithAuth(`${API_BASE_URL}/get-programs`);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -95,11 +95,6 @@ const MainPage = () => {
   };
 
   const fetchPrograms = async () => {
-    if (!Number.isInteger(userId) || userId <= 0) {
-      alert('Пользователь не авторизован. Войдите заново.');
-      return;
-    }
-
     setLoading(true);
     try {
       const normalizedPrograms = await loadPrograms();
@@ -136,11 +131,6 @@ const MainPage = () => {
   };
 
   const handleComparePrograms = async () => {
-    if (!Number.isInteger(userId) || userId <= 0) {
-      alert('Пользователь не авторизован. Войдите заново.');
-      return;
-    }
-
     setCompareLoading(true);
     setCompareError('');
 
@@ -206,13 +196,12 @@ const MainPage = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/compare_graphs`, {
+      const response = await fetchWithAuth(`${API_BASE_URL}/compare_graphs`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: String(userId),
           university_name: selectedMainProgram.universityName,
           program_name: selectedMainProgram.programName,
           compare_programs: comparePrograms.map((program) => ({
@@ -241,15 +230,10 @@ const MainPage = () => {
   };
 
   const fetchShowHistory = async () => {
-    if (!Number.isInteger(userId) || userId <= 0) {
-      alert('Пользователь не авторизован. Войдите заново.');
-      return;
-    }
-
     setHistoryLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/get-history?user_id=${userId}`);
+      const response = await fetchWithAuth(`${API_BASE_URL}/get-history`);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -272,13 +256,8 @@ const MainPage = () => {
 
 
   const fetchHistoryGraph = async (hash) => {
-    if (!Number.isInteger(userId) || userId <= 0) {
-      alert('Пользователь не авторизован. Войдите заново.');
-      throw new Error('User not authorized');
-    }
-
     try {
-      const response = await fetch(`${API_BASE_URL}/get-history-graph?user_id=${userId}&hash=${hash}`);
+      const response = await fetchWithAuth(`${API_BASE_URL}/get-history-graph?hash=${hash}`);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
