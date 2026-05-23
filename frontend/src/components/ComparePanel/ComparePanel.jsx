@@ -12,6 +12,18 @@ const ComparePanel = ({ data }) => {
         ? data.Recomendations
         : [];
 
+    const toEntriesArray = (value) => {
+        if (Array.isArray(value)) {
+            return value;
+        }
+
+        if (value && typeof value === 'object') {
+            return Object.entries(value).map(([key, nestedValue]) => ({ [key]: nestedValue }));
+        }
+
+        return [];
+    };
+
     const getColorByOverlap = (value) => {
         const v = Math.max(0, Math.min(100, Number(value)));
         let red, green;
@@ -42,8 +54,9 @@ const ComparePanel = ({ data }) => {
                 }
             });
 
-            disciplines.forEach((disciplineObj) => {
+            toEntriesArray(disciplines).forEach((disciplineObj) => {
                 Object.entries(disciplineObj).forEach(([disciplineName, disciplineData]) => {
+                    const topics = toEntriesArray(disciplineData?.topics);
 
                     const disciplineId = `${programName}-${disciplineName}`;
                     nodes.push({
@@ -61,8 +74,9 @@ const ComparePanel = ({ data }) => {
                         }
                     });
 
-                    disciplineData.topics.forEach((topicObj) => {
-                        Object.entries(topicObj).forEach(([topicName, subtopics]) => {
+                    topics.forEach((topicObj) => {
+                        Object.entries(topicObj).forEach(([topicName, topicData]) => {
+                            const normalizedSubtopics = toEntriesArray(topicData?.subtopics ?? topicData);
 
                             const topicId = `${disciplineId}-${topicName}`;
 
@@ -81,7 +95,7 @@ const ComparePanel = ({ data }) => {
                                 }
                             });
 
-                            subtopics.forEach((subtopicObj) => {
+                            normalizedSubtopics.forEach((subtopicObj) => {
                                 Object.entries(subtopicObj).forEach(([subtopicName, subtopicData]) => {
 
                                     const overlap = Number(subtopicData.overlapValue);
