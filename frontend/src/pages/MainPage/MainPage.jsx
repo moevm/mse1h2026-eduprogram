@@ -7,10 +7,12 @@ import Button from '../../components/UI/Button/Button';
 import Navbar from "../../components/Navbar/Navbar";
 import TreeEditor from '../../components/TreeEditor';
 import UploadProgram from '../../components/UploadProgram';
+import { useNotification } from '../../components/UI/Notification/Notification';
 import "./MainPage.css"
 
 const MainPage = () => {
   const navigate = useNavigate();
+  const notify = useNotification();
   const [isOpen, setIsOpen] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const [programs, setPrograms] = useState([]);
@@ -101,7 +103,7 @@ const MainPage = () => {
 
   const fetchPrograms = async () => {
     if (!Number.isInteger(userId) || userId <= 0) {
-      alert('Пользователь не авторизован. Войдите заново.');
+      notify('Пользователь не авторизован. Войдите заново.', { type: 'warning' });
       return;
     }
 
@@ -113,7 +115,7 @@ const MainPage = () => {
       setIsOpen(true);
     } catch (error) {
       console.error('Ошибка:', error);
-      alert('Не удалось получить программы');
+      notify('Не удалось получить программы', { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -142,7 +144,7 @@ const MainPage = () => {
 
   const handleComparePrograms = async () => {
     if (!Number.isInteger(userId) || userId <= 0) {
-      alert('Пользователь не авторизован. Войдите заново.');
+      notify('Пользователь не авторизован. Войдите заново.', { type: 'warning' });
       return;
     }
 
@@ -247,7 +249,7 @@ const MainPage = () => {
 
   const fetchShowHistory = async () => {
     if (!Number.isInteger(userId) || userId <= 0) {
-      alert('Пользователь не авторизован. Войдите заново.');
+      notify('Пользователь не авторизован. Войдите заново.', { type: 'warning' });
       return;
     }
 
@@ -268,7 +270,7 @@ const MainPage = () => {
 
     } catch (error) {
       console.error('Ошибка загрузки истории:', error);
-      alert('Не удалось загрузить историю сравнений');
+      notify('Не удалось загрузить историю сравнений', { type: 'error' });
     } finally {
       setHistoryLoading(false);
     }
@@ -278,7 +280,7 @@ const MainPage = () => {
 
   const fetchHistoryGraph = async (hash) => {
     if (!Number.isInteger(userId) || userId <= 0) {
-      alert('Пользователь не авторизован. Войдите заново.');
+      notify('Пользователь не авторизован. Войдите заново.', { type: 'warning' });
       throw new Error('User not authorized');
     }
 
@@ -298,7 +300,7 @@ const MainPage = () => {
       return data;
     } catch (error) {
       console.error('Ошибка загрузки результата сравнения:', error);
-      alert('Не удалось загрузить результат сравнения');
+      notify('Не удалось загрузить результат сравнения', { type: 'error' });
       throw error;
     }
   };

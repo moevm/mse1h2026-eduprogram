@@ -5,10 +5,12 @@ import TreeActions from './TreeActions';
 import JsonViewer from './JsonViewer';
 import Modal from '../UI/Modal/Modal';
 import Input from '../UI/Input/Input';
+import { useNotification } from '../UI/Notification/Notification';
 import { generateId, convertToBackendFormat, submitProgram } from './utils';
 import './TreeEditor.css';
 
 const TreeEditor = ({ isOpen, onClose }) => {
+  const notify = useNotification();
   const [programName, setProgramName] = useState('');
 
   const [disciplines, setDisciplines] = useState([
@@ -53,11 +55,11 @@ const TreeEditor = ({ isOpen, onClose }) => {
   const handleSubmitProgram = async () => {
     const result = await submitProgram(programName, disciplines);
     if (result.success) {
-      alert('Рабочая программа успешно добавлена');
+      notify('Рабочая программа успешно добавлена', { type: 'success' });
       onClose();
       return;
     }
-    alert(result.error || 'Ошибка отправки программы');
+    notify(result.error || 'Ошибка отправки программы', { type: 'error' });
   };
 
   return (

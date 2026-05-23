@@ -112,3 +112,18 @@
     background: #d5d5d5;
     margin: 4px 0;
 }
+
+.graph-download-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.graph-download-row .formats-panel {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.graph-download-row .icon-button {
+    flex-shrink: 0;
+}

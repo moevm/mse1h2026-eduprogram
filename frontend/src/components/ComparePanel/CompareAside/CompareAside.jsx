@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import "./CompareAside.css"
 import Button from "../../UI/Button/Button";
+import IconButton from "../../UI/IconButton/IconButton";
+import { useNotification } from "../../UI/Notification/Notification";
 
 
 const CompareAside = () => {
+    const notify = useNotification();
     const [formats, setFormats] = useState([]);
     const [selected, setSelected] = useState('');
     const [downloading, setDownloading] = useState(false);
@@ -65,7 +68,7 @@ const CompareAside = () => {
             console.log(`Файл ${filename} успешно скачан`);
         } catch (error) {
             console.error('Ошибка при скачивании:', error);
-            alert(`Ошибка при скачивании: ${error.message}`);
+            notify(`Ошибка при скачивании: ${error.message}`, { type: 'error' });
         } finally {
             setDownloading(false);
         }
@@ -79,19 +82,22 @@ const CompareAside = () => {
 
             <div className="graph-aside__divider" />
 
-            <select className="formats-panel" value={selected} onChange={handleChange}>
-                <option value="">Выберите формат</option>
-                {formats.map((format, idx) => (
-                    <option key={idx} value={format}>{format}</option>
-                ))}
-            </select>
-            <Button
-                type="button"
-                onClick={() => downloadFile('download-graph', selected, `graph.${selected.toLowerCase()}`)}
-                disabled={!selected || downloading}
-            >
-                {downloading ? '⏳' : 'Скачать граф'}
-            </Button>
+            <div className="graph-download-row">
+                <select className="formats-panel" value={selected} onChange={handleChange}>
+                    <option value="">Выберите формат</option>
+                    {formats.map((format, idx) => (
+                        <option key={idx} value={format}>{format}</option>
+                    ))}
+                </select>
+                <IconButton
+                    type="button"
+                    onClick={() => downloadFile('download-graph', selected, `graph.${selected.toLowerCase()}`)}
+                    disabled={!selected || downloading}
+                    title="Скачать граф"
+                >
+                    {downloading ? '⏳' : '⬇️'}
+                </IconButton>
+            </div>
 
             <div className="graph-aside__divider" />
 

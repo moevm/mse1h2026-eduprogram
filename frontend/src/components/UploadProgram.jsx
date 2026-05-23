@@ -3,6 +3,7 @@ import "./UploadProgram.css";
 import Input from "./UI/Input/Input";
 import Button from "./UI/Button/Button";
 import Modal from "./UI/Modal/Modal";
+import { useNotification } from "./UI/Notification/Notification";
 
 // Настройки IndexedDB
 const dbName = "ProgramFilesDB";
@@ -61,6 +62,7 @@ const loadFilesFromDB = async () => {
 };
 
 export default function UploadProgram({ isOpen, onClose }) {
+  const notify = useNotification();
   const domain =
     process.env.REACT_APP_API_URL_GET_PROGRAMMS ||
     process.env.REACT_APP_API_URL ||
@@ -184,16 +186,16 @@ export default function UploadProgram({ isOpen, onClose }) {
   const handleSubmit = async () => {
     if (!isProgramNameValid) {
       setProgramTouched(true);
-      alert("Пожалуйста, введите название программы");
+      notify("Пожалуйста, введите название программы", { type: 'warning' });
       return;
     }
 
     if (!university) {
-      alert("Пожалуйста, выберите университет");
+      notify("Пожалуйста, выберите университет", { type: 'warning' });
       return;
     }
     if (files.length === 0) {
-      alert("Пожалуйста, выберите файлы");
+      notify("Пожалуйста, выберите файлы", { type: 'warning' });
       return;
     }
 
@@ -212,13 +214,13 @@ export default function UploadProgram({ isOpen, onClose }) {
         }
       );
       if (response.ok) {
-        alert("Отправлено!");
+        notify("Программа успешно загружена", { type: 'success' });
         handleClose();
       }
-      else alert("Ошибка при отправке");
+      else notify("Ошибка при отправке", { type: 'error' });
     } catch (error) {
       console.error("Ошибка:", error);
-      alert("Ошибка при отправке");
+      notify("Ошибка при отправке", { type: 'error' });
     }
   };
 

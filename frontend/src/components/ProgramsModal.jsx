@@ -15,21 +15,29 @@ const ProgramsModal = ({ isOpen, onClose, programs, onShowGraph }) => {
         <p className="text-program">Нет данных</p>
       ) : (
         <ul className="programs-modal-list">
-          {programs.map((program, idx) => (
-            <li key={idx} className="programs-modal-item">
-              <span className="text-program">{program.displayName || program}</span>
-              <Button
-                type="button"
-                color="#000000"
-                onClick={() => onShowGraph(program)}
-                width="160px"
-                height="43px"
-                absolute={false}
-              >
-                <span className="text-program">Показать граф программы</span>
-              </Button>
-            </li>
-          ))}
+          {programs.map((program, idx) => {
+            const label = program.displayName || program;
+            return (
+              <li key={idx} className="programs-modal-item">
+                <span
+                  className="text-program programs-modal-item__label"
+                  title={label}
+                >
+                  {label}
+                </span>
+                <Button
+                  type="button"
+                  color="#000000"
+                  onClick={() => onShowGraph(program)}
+                  width="160px"
+                  height="43px"
+                  absolute={false}
+                >
+                  <span className="text-program">Показать граф программы</span>
+                </Button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </Modal>
