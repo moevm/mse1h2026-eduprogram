@@ -4,7 +4,7 @@ import NavbarSelect from "../../NavbarSelect/NavbarSelect";
 import { useLogout } from '../../../hooks/useLogout';
 import './GraphNavbar.css';
 
-export default function GraphNavbar() {
+export default function GraphNavbar({ onModeChange }) {
     const handleLogout = useLogout();
 
     return (
@@ -16,8 +16,8 @@ export default function GraphNavbar() {
             <div className="navbar-end">
                 <NavbarSelect
                     options={[
-                        { label: "Граф", value: "graph", onClick: (v) => console.log(v) },
-                        { label: "Мосты", value: "bridges", onClick: (v) => console.log(v) },
+                        { label: "Граф", value: "graph", onClick: (v) => onModeChange?.(v) },
+                        { label: "Мосты", value: "bridges", onClick: (v) => onModeChange?.(v) },
                     ]}
                 />
 
