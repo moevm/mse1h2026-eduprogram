@@ -4,7 +4,7 @@ import GraphAside from './GraphAside/GraphAside';
 import GraphField from './GraphField/GraphField';
 import './GraphPanel.css';
 
-const GraphPanel = ({ data }) => {
+const GraphPanel = ({ data, viewMode = 'graph', bridgePairs = [], onModeChange }) => {
   const graphFieldRef = useRef(null);
   const historyStepRef = useRef(0);
 
@@ -170,7 +170,7 @@ const GraphPanel = ({ data }) => {
 
   return (
       <>
-        <GraphNavbar onExportPNG={handleExportPNG} />
+      <GraphNavbar onExportPNG={handleExportPNG} onModeChange={onModeChange} />
         <div className="graph-panel">
           <GraphAside
               onExpandAll={handleExpandAll}
@@ -179,6 +179,8 @@ const GraphPanel = ({ data }) => {
           <GraphField
               ref={graphFieldRef}
               data={data}
+          viewMode={viewMode}
+          bridgePairs={bridgePairs}
               selectedNodeIds={selectedNodeIds}
               hiddenNodeIds={hiddenNodeIds}
               expandedNodes={expandedNodes}
