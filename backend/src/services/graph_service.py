@@ -84,6 +84,11 @@ class GraphService:
                 {"responseMessage": "Rdf error!"}
             )
         resultGraph = self.rdf.get_data_of_graph(graphId)
+        if not resultGraph or None in resultGraph.keys():
+            return (
+                status.HTTP_404_NOT_FOUND,
+                {"responseMessage": "Not found graph"}
+            )
         graphDisciplines = {}
         for programName, disciplines in resultGraph.items():
             for discipline in disciplines.keys():
