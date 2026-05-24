@@ -11,8 +11,11 @@ from src.services.program_service import ProgramService
 from src.services.graph_service import GraphService
 from src.services.gigachat_service import GigachatService
 from src.dataBase.dataBaseStructs import ProgramReference
+from src.utils.jwt_handler import verify_token, get_user_id_from_token, create_token_pair, get_token_type
 from typing import List
 from typing import Any
+import hashlib
+from datetime import datetime, timedelta
 
 router = APIRouter()
 
@@ -31,6 +34,114 @@ def registration(user: User, db: DataBaseController = Depends(get_db)):
     auth_service = AuthService(db)
     status_code, content = auth_service.register_user(user)
     return JSONResponse(status_code=status_code, content=content)
+
+
+@router.post("/refresh-tokens")
+def refresh_tokens(payload: Any = Body(...), db: DataBaseController = Depends(get_db)):
+    """
+    Эндпоинт для получения новой пары токенов (access + refresh).
+    
+    Требует в теле запроса:
+    {
+        "refresh_token": "старый refresh-токен"
+    }
+    
+    Возвращает:
+    {
+        "responseMessage": "ok",
+        "access_token": "новый access-токен",
+        "refresh_token": "новый refresh-токен"
+    }
+    """
+    if not db.isConnected():
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"responseMessage": "Database connection error"}
+        )
+    
+    if not isinstance(payload, dict) or "refresh_token" not in payload:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={"responseMessage": "refresh_token is required"}
+        )
+    
+    refresh_token = payload.get("refresh_token")
+    
+    token_type = get_token_type(refresh_token)
+    if token_type != "refresh":
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"responseMessage": "Invalid token type. Expected refresh token."}
+        )
+    
+    user_id = get_user_id_from_token(refresh_token)
+    if user_id is None:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"responseMessage": "Invalid or expired refresh token"}
+        )
+    
+    token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
+    if not db.is_refresh_token_valid(user_id, token_hash):
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"responseMessage": "Refresh token has been revoked or expired"}
+        )
+    
+    new_access_token, new_refresh_token = create_token_pair(user_id)
+    
+    new_token_hash = hashlib.sha256(new_refresh_token.encode()).hexdigest()
+    expires_at = datetime.utcnow() + timedelta(days=7)
+    
+    if not db.add_refresh_token(user_id, new_token_hash, expires_at):
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"responseMessage": "Failed to save refresh token"}
+        )
+    
+    db.revoke_refresh_token(token_hash)
+    
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "responseMessage": "ok",
+            "access_token": new_access_token,
+            "refresh_token": new_refresh_token
+        }
+    )
+
+
+@router.post("/logout")
+def logout(payload: Any = Body(...), db: DataBaseController = Depends(get_db)):
+    """
+    Эндпоинт для выхода (отзыва refresh-токена).
+    
+    Требует в теле запроса:
+    {
+        "refresh_token": "токен, который нужно отозвать"
+    }
+    """
+    if not db.isConnected():
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"responseMessage": "Database connection error"}
+        )
+    
+    if not isinstance(payload, dict) or "refresh_token" not in payload:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={"responseMessage": "refresh_token is required"}
+        )
+    
+    refresh_token = payload.get("refresh_token")
+    
+    token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
+    db.revoke_refresh_token(token_hash)
+    
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"responseMessage": "Logged out successfully"}
+    )
 
 
 @router.post("/add-program")
@@ -86,7 +197,7 @@ def downloadGraph(format: str, graphId: str, user_id: int = Depends(get_current_
                   rdf: RdfController = Depends(get_rdf)):
     """Скачивание графа"""
     program_service = GraphService(db, None, rdf)
-    response = program_service.get_export_file(format, graphId)
+    response = program_service.get_export_file(format, graphId, user_id)
     return response
 
 @router.get("/download-report")
@@ -95,7 +206,7 @@ def downloadReport(format: str, graphId: str, user_id: int = Depends(get_current
                    rdf: RdfController = Depends(get_rdf)):
     """Скачивание отчета"""
     program_service = GraphService(db, None, rdf)
-    response = program_service.get_report_file(format, graphId)
+    response = program_service.get_report_file(format, graphId, user_id)
     return response
 
 @router.get("/get-history")

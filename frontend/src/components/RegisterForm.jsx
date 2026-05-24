@@ -6,7 +6,7 @@ import Input from './Input';
 import Card from './Card/Card';
 import './RegisterForm.css';
 
-import { register, setToken } from '../services/api/auth';
+import { register, setTokens } from '../services/api/auth';
 
 function RegisterForm() {
   const [email, setEmail] = useState('');
@@ -25,9 +25,8 @@ function RegisterForm() {
     const result = await register(email, password);
     
     if (result.success) {
-      // сохранение JWT токена в localStorage
-      if (result.token) {
-        setToken(result.token);
+      if (result.access_token && result.refresh_token) {
+        setTokens(result.access_token, result.refresh_token);
       }
       localStorage.setItem('userLogin', email);
       navigate('/main');

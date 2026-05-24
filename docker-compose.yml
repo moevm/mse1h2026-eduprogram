@@ -55,6 +55,7 @@ services:
       GIGACHAT_CLIENT_ID: ${GIGACHAT_CLIENT_ID}
       GIGACHAT_AUTHORIZATION_KEY: ${GIGACHAT_AUTHORIZATION_KEY}
       GIGACHAT_AUTH_CERT_PATH: ${GIGACHAT_AUTH_CERT_PATH}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-test_secret_key}
     volumes:
       - backend_storage:/app/storage
     depends_on:
