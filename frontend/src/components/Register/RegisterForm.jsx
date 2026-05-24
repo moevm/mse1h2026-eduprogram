@@ -6,7 +6,7 @@ import Input from '../UI/Input/Input';
 import Card from '../UI/Card/Card';
 import './RegisterForm.css';
 
-import { register } from '../../services/api/auth';
+import { register, setTokens } from '../../services/api/auth';
 
 function RegisterForm() {
   const [email, setEmail] = useState('');
@@ -25,8 +25,8 @@ function RegisterForm() {
     const result = await register(email, password);
     
     if (result.success) {
-      if (result.id) {
-        localStorage.setItem('userId', String(result.id));
+      if (result.access_token && result.refresh_token) {
+        setTokens(result.access_token, result.refresh_token);
       }
       localStorage.setItem('userLogin', email);
       navigate('/main');
