@@ -69,10 +69,6 @@ const GraphField = forwardRef(({
         const cm = childrenMapRef.current;
         const ntm = nodeTypeMapRef.current;
 
-        if (viewModeRef.current === 'bridges') {
-            Object.keys(ntm).forEach((nodeId) => visible.add(nodeId));
-            return visible;
-        }
 
         Object.keys(ntm).forEach((nodeId) => {
             if (ntm[nodeId] === 'discipline') {
@@ -84,6 +80,8 @@ const GraphField = forwardRef(({
             const children = cm[parentId] || [];
             children.forEach((childId) => {
                 visible.add(childId);
+                const grandChildren = cm[childId] || [];
+                grandChildren.forEach((gc) => visible.add(gc));
             });
         });
 
@@ -130,26 +128,41 @@ const GraphField = forwardRef(({
         });
 
         cy.batch(() => {
-            cy.nodes().style('display', 'element');
-            cy.edges().style('display', 'element');
+            cy.nodes().style('display', 'none');
+            cy.edges().style('display', 'none');
 
             cy.elements().removeClass('bridge-muted bridge-highlight');
-            cy.nodes().addClass('bridge-muted');
-            cy.edges().addClass('bridge-muted');
 
-            bridgeNodeIds.forEach((nodeId) => {
+            visibleIds.forEach((nodeId) => {
                 const node = cy.getElementById(nodeId);
-                if (node.nonempty() && visibleIds.has(nodeId)) {
-                    node.removeClass('bridge-muted');
+                if (node.nonempty()) node.style('display', 'element');
+            });
+
+            cy.edges().forEach((edge) => {
+                const src = edge.data('source');
+                const tgt = edge.data('target');
+                if (visibleIds.has(src) && visibleIds.has(tgt)) {
+                    edge.style('display', 'element');
+                }
+            });
+
+            cy.nodes().forEach((node) => {
+                if (node.style('display') !== 'element') return;
+                const id = node.data('id');
+                if (bridgeNodeIds.has(id)) {
                     node.addClass('bridge-highlight');
+                } else {
+                    node.addClass('bridge-muted');
                 }
             });
 
             cy.edges().forEach((edge) => {
+                if (edge.style('display') !== 'element') return;
                 const edgeKey = `${edge.data('source')}::${edge.data('target')}`;
                 if (bridgeEdgeKeys.has(edgeKey)) {
-                    edge.removeClass('bridge-muted');
                     edge.addClass('bridge-highlight');
+                } else {
+                    edge.addClass('bridge-muted');
                 }
             });
 
@@ -623,7 +636,28 @@ const GraphField = forwardRef(({
 
     useEffect(() => {
         if (!cyRef.current || cyRef.current.destroyed()) return;
-        applyVisibility(cyRef.current, expandedNodes, selectedNodeIds, hiddenNodeIds, false);
+
+        const cy = cyRef.current;
+
+        const runApply = () => applyVisibility(cy, expandedNodesRef.current, selectedNodeIdsRef.current, hiddenNodeIds, false);
+
+        if (viewMode === 'bridges') {
+            // If a layout is running, schedule highlighting after it finishes
+            if (layoutRunningRef.current) {
+                try {
+                    cy.once('layoutstop', () => {
+                        // small timeout to ensure styles settle
+                        setTimeout(() => runApply(), 30);
+                    });
+                } catch (e) {
+                    runApply();
+                }
+            } else {
+                runApply();
+            }
+        } else {
+            runApply();
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [bridgePairs, viewMode]);
 
