@@ -73,3 +73,13 @@
 .graph-aside__controls .custom-button {
     width: 100% !important;
 }
+
+.graph-aside__divider {
+    height: 1px;
+    background: #d5d5d5;
+    margin: 4px 0;
+}
+
+.graph-aside .custom-button {
+    width: 100%;
+}

@@ -373,6 +373,19 @@ class ProgramService:
                 {"responseMessage": "Rdf error!"}
             )
         resultGraph = self.rdf.get_data_of_graph(hash)
+        if not self.db and not self.db.isConnected:
+            return (
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"responseMessage": "No db"}
+            )
+
+        result = self.db.findComparedGraphsByHash(hash)
+        if not result:
+            return (
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"responseMessage": "Error with find graph in db"}
+            )
+        resultGraph["Recomendations"] = result[4]
         return (
             status.HTTP_200_OK,
             resultGraph

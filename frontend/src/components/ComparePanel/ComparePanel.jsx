@@ -3,14 +3,25 @@ import CompareNavbar from './CompareNavbar/CompareNavbar';
 import CompareAside from './CompareAside/CompareAside';
 import CompareField from './CompareField/CompareField';
 import './ComparePanel.css';
-import Button from '../Button/Button';
 
 const ComparePanel = ({ data }) => {
-    const [isRecommendationsOpen, setIsRecommendationsOpen] = useState(false);
+    const [activeSection, setActiveSection] = useState('graph');
 
     const recommendations = Array.isArray(data?.Recomendations)
         ? data.Recomendations
         : [];
+
+    const toEntriesArray = (value) => {
+        if (Array.isArray(value)) {
+            return value;
+        }
+
+        if (value && typeof value === 'object') {
+            return Object.entries(value).map(([key, nestedValue]) => ({ [key]: nestedValue }));
+        }
+
+        return [];
+    };
 
     const getColorByOverlap = (value) => {
         const v = Math.max(0, Math.min(100, Number(value)));
@@ -42,8 +53,9 @@ const ComparePanel = ({ data }) => {
                 }
             });
 
-            disciplines.forEach((disciplineObj) => {
+            toEntriesArray(disciplines).forEach((disciplineObj) => {
                 Object.entries(disciplineObj).forEach(([disciplineName, disciplineData]) => {
+                    const topics = toEntriesArray(disciplineData?.topics);
 
                     const disciplineId = `${programName}-${disciplineName}`;
                     nodes.push({
@@ -61,8 +73,9 @@ const ComparePanel = ({ data }) => {
                         }
                     });
 
-                    disciplineData.topics.forEach((topicObj) => {
-                        Object.entries(topicObj).forEach(([topicName, subtopics]) => {
+                    topics.forEach((topicObj) => {
+                        Object.entries(topicObj).forEach(([topicName, topicData]) => {
+                            const normalizedSubtopics = toEntriesArray(topicData?.subtopics ?? topicData);
 
                             const topicId = `${disciplineId}-${topicName}`;
 
@@ -81,7 +94,7 @@ const ComparePanel = ({ data }) => {
                                 }
                             });
 
-                            subtopics.forEach((subtopicObj) => {
+                            normalizedSubtopics.forEach((subtopicObj) => {
                                 Object.entries(subtopicObj).forEach(([subtopicName, subtopicData]) => {
 
                                     const overlap = Number(subtopicData.overlapValue);
@@ -127,7 +140,7 @@ const ComparePanel = ({ data }) => {
     }
 
     const handleSectionChange = (section) => {
-        setIsRecommendationsOpen(section === 'report');
+        setActiveSection(section);
     };
 
     return (
@@ -135,27 +148,27 @@ const ComparePanel = ({ data }) => {
             <CompareNavbar onSectionChange={handleSectionChange} />
             <div className="graph-panel">
                 <CompareAside />
-                <CompareField nodes={nodes} edges={edges} />
-            </div>
-            {isRecommendationsOpen && (
-                <div className="recommendations-drawer">
-                    <Button onClick={() => setIsRecommendationsOpen(false)}>
-                        Скрыть рекомендации
-                    </Button>
-                    <div>
-                        <h3>Рекомендации</h3>
-                        {recommendations.length === 0 ? (
-                            <p>Нет рекомендаций</p>
-                        ) : (
-                            <ul>
-                                {recommendations.map((rec, index) => (
-                                    <li key={index}>{rec || '—'}</li>
-                                ))}
-                            </ul>
-                        )}
+                {activeSection === 'report' ? (
+                    <div className="report-view">
+                        <article className="report-document">
+                            <h1 className="report-document__title">Рекомендации</h1>
+                            {recommendations.length === 0 ? (
+                                <p className="report-document__empty">Нет рекомендаций</p>
+                            ) : (
+                                <ol className="report-document__list">
+                                    {recommendations.map((rec, index) => (
+                                        <li key={index} className="report-document__item">
+                                            {rec || '—'}
+                                        </li>
+                                    ))}
+                                </ol>
+                            )}
+                        </article>
                     </div>
-                </div>
-            )}
+                ) : (
+                    <CompareField nodes={nodes} edges={edges} />
+                )}
+            </div>
         </>
     );
 };

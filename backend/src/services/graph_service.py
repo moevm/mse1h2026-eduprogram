@@ -14,6 +14,7 @@ from src.dataBase.dataBaseStructs import ProgramReference
 from src.rdf.rdf_controller import RdfController
 from src.services.gigachat_service import GigachatService
 from src.utils.gigachat_matcher import GigachatMatcher
+from src.utils.graph import find_bridges
 
 
 class GraphService:
@@ -80,6 +81,38 @@ class GraphService:
             headers={
                 "Content-Disposition": f"attachment; filename={graphId}.{self._fileExtensions[format]}"
             }
+        )
+
+    def find_graph_bridges(self, graphId: str) -> Tuple[int, Dict[str, Any]]:
+        if not self.rdf:
+            return (
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"responseMessage": "Rdf error!"}
+            )
+        resultGraph = self.rdf.get_data_of_graph(graphId)
+        if not resultGraph or None in resultGraph.keys():
+            return (
+                status.HTTP_404_NOT_FOUND,
+                {"responseMessage": "Not found graph"}
+            )
+        graphDisciplines = {}
+        for programName, disciplines in resultGraph.items():
+            for discipline in disciplines.keys():
+                for previousDiscipline in disciplines[discipline]["previousDisciplines"]:
+                    if not discipline in graphDisciplines:
+                        graphDisciplines[discipline] = [previousDiscipline]
+                    else:
+                        graphDisciplines[discipline].append(previousDiscipline)
+
+                    if not previousDiscipline in graphDisciplines:
+                        graphDisciplines[previousDiscipline] = [discipline]
+                    else:
+                        graphDisciplines[previousDiscipline].append(discipline)
+
+        print(graphDisciplines)
+        return (
+            status.HTTP_200_OK,
+            {"bridges": find_bridges(graphDisciplines)}
         )
 
     def get_report_file(self, format: str, graphId: str, user_id: int = None) -> Response:

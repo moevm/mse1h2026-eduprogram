@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiUser } from 'react-icons/fi';
-import Button from './Button/Button';
-import Input from './Input';
-import Card from './Card/Card';
-import './RegisterForm.css';
+import Button from '../UI/Button/Button';
+import Input from '../UI/Input/Input';
+import Card from '../UI/Card/Card';
+import './LoginForm.css';
 
-import { register, setTokens } from '../services/api/auth';
+import { login, setTokens } from '../../services/api/auth';
 
-function RegisterForm() {
+
+function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleRegister = async () => {
+  const handleLogin = async () => {
     setError('');
     
     if (!email || !password) {
@@ -22,7 +23,7 @@ function RegisterForm() {
       return;
     }
     
-    const result = await register(email, password);
+    const result = await login(email, password);
     
     if (result.success) {
       if (result.access_token && result.refresh_token) {
@@ -35,20 +36,19 @@ function RegisterForm() {
     }
   };
 
-  const handleLoginClick = () => {
-    navigate('/login');
+  const handleRegisterClick = () => {
+    navigate('/register');
   };
 
   return (
-    <div className="register-container">
-      <Card>
-        <div className="register-frame">
+      <Card width="500px">
+        <div className="login-frame">
           <FiUser className="user-icon" />
         </div>
 
-        <div className="register-text">
-          <h2>Регистрация</h2>
-          <span>Зарегистрировать аккаунт с помощью электронной почты</span>
+        <div className="login-text">
+          <h2>Вход</h2>
+          <span>Войти в аккаунт с помощью электронной почты</span>
         </div>
 
         {error && <div className="error">{error}</div>}
@@ -74,18 +74,17 @@ function RegisterForm() {
         <Button 
           type="button"
           color="#000000"
-          onClick={handleRegister}
+          onClick={handleLogin}
           absolute={false}
         >
-          Зарегистрироваться
+          Войти
         </Button>
 
-        <div className="register-link-container" >
-          Уже зарегистрированы? <button className="reg-button" onClick={handleLoginClick}>Войти</button>
+        <div className="login-link-container" >
+          Нет аккаунта? <button className="log-button" onClick={handleRegisterClick}>Зарегистрироваться</button>
         </div>
       </Card>
-    </div>
   );
 }
 
-export default RegisterForm;
+export default LoginForm;

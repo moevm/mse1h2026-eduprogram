@@ -7,6 +7,8 @@ cytoscape.use(dagre);
 
 const GraphField = forwardRef(({
                                    data,
+                                   viewMode = 'graph',
+                                   bridgePairs = [],
                                    selectedNodeIds = [],
                                    hiddenNodeIds = [],
                                    expandedNodes = new Set(),
@@ -24,10 +26,13 @@ const GraphField = forwardRef(({
     const onSelectionChangeRef = useRef(onSelectionChange);
     const onToggleExpandRef = useRef(onToggleExpand);
     const layoutRunningRef = useRef(false);
+    const pendingApplyRef = useRef(null);
 
     const expandedNodesRef = useRef(expandedNodes);
     const childrenMapRef = useRef(childrenMap);
     const nodeTypeMapRef = useRef(nodeTypeMap);
+    const bridgePairsRef = useRef(bridgePairs);
+    const viewModeRef = useRef(viewMode);
 
     useEffect(() => { selectedNodeIdsRef.current = selectedNodeIds; }, [selectedNodeIds]);
     useEffect(() => { onToggleNodeSelectionRef.current = onToggleNodeSelection; }, [onToggleNodeSelection]);
@@ -36,6 +41,8 @@ const GraphField = forwardRef(({
     useEffect(() => { expandedNodesRef.current = expandedNodes; }, [expandedNodes]);
     useEffect(() => { childrenMapRef.current = childrenMap; }, [childrenMap]);
     useEffect(() => { nodeTypeMapRef.current = nodeTypeMap; }, [nodeTypeMap]);
+    useEffect(() => { bridgePairsRef.current = bridgePairs; }, [bridgePairs]);
+    useEffect(() => { viewModeRef.current = viewMode; }, [viewMode]);
 
     useImperativeHandle(ref, () => ({
         exportPNG: () => {
@@ -63,6 +70,7 @@ const GraphField = forwardRef(({
         const cm = childrenMapRef.current;
         const ntm = nodeTypeMapRef.current;
 
+
         Object.keys(ntm).forEach((nodeId) => {
             if (ntm[nodeId] === 'discipline') {
                 visible.add(nodeId);
@@ -73,6 +81,8 @@ const GraphField = forwardRef(({
             const children = cm[parentId] || [];
             children.forEach((childId) => {
                 visible.add(childId);
+                const grandChildren = cm[childId] || [];
+                grandChildren.forEach((gc) => visible.add(gc));
             });
         });
 
@@ -81,49 +91,138 @@ const GraphField = forwardRef(({
         return visible;
     }, []);
 
-    const applyVisibility = useCallback((cy, expanded, selected, hidden, shouldFit = false) => {
-        if (!cy || cy.destroyed()) return;
-        if (layoutRunningRef.current) return;
+    const normalizeBridgePairs = useCallback((pairs) => {
+        if (!Array.isArray(pairs)) {
+            return [];
+        }
 
-        const visibleIds = computeVisibleNodeIds(expanded, new Set(hidden));
+        return pairs
+            .map((pair) => {
+                if (Array.isArray(pair) && pair.length >= 2) {
+                    return [pair[0], pair[1]];
+                }
+
+                if (pair && typeof pair === 'object') {
+                    const values = Object.values(pair);
+                    if (values.length >= 2) {
+                        return [values[0], values[1]];
+                    }
+                }
+
+                return null;
+            })
+            .filter(Boolean);
+    }, []);
+
+    const applyBridgeMode = useCallback((cy, visibleIds) => {
+        if (!cy || cy.destroyed()) return;
+
+        const bridgePairsNormalized = normalizeBridgePairs(bridgePairsRef.current);
+        const bridgeNodeIds = new Set();
+        const bridgeEdgeKeys = new Set();
+
+        bridgePairsNormalized.forEach(([sourceId, targetId]) => {
+            bridgeNodeIds.add(sourceId);
+            bridgeNodeIds.add(targetId);
+            bridgeEdgeKeys.add(`${sourceId}::${targetId}`);
+            bridgeEdgeKeys.add(`${targetId}::${sourceId}`);
+        });
 
         cy.batch(() => {
             cy.nodes().style('display', 'none');
             cy.edges().style('display', 'none');
 
+            cy.elements().removeClass('bridge-muted bridge-highlight');
+
             visibleIds.forEach((nodeId) => {
                 const node = cy.getElementById(nodeId);
-                if (node.nonempty()) {
-                    node.style('display', 'element');
+                if (node.nonempty()) node.style('display', 'element');
+            });
+
+            cy.edges().forEach((edge) => {
+                const src = edge.data('source');
+                const tgt = edge.data('target');
+                if (visibleIds.has(src) && visibleIds.has(tgt)) {
+                    edge.style('display', 'element');
+                }
+            });
+
+            cy.nodes().forEach((node) => {
+                if (node.style('display') !== 'element') return;
+                const id = node.data('id');
+                if (bridgeNodeIds.has(id)) {
+                    node.addClass('bridge-highlight');
+                } else {
+                    node.addClass('bridge-muted');
                 }
             });
 
             cy.edges().forEach((edge) => {
-                const srcId = edge.data('source');
-                const tgtId = edge.data('target');
-                if (visibleIds.has(srcId) && visibleIds.has(tgtId)) {
-                    edge.style('display', 'element');
+                if (edge.style('display') !== 'element') return;
+                const edgeKey = `${edge.data('source')}::${edge.data('target')}`;
+                if (bridgeEdgeKeys.has(edgeKey)) {
+                    edge.addClass('bridge-highlight');
+                } else {
+                    edge.addClass('bridge-muted');
                 }
             });
 
             cy.nodes().removeClass('highlighted expanded');
             cy.nodes().unselect();
-
-            selected.forEach((nodeId) => {
-                const node = cy.getElementById(nodeId);
-                if (node.nonempty() && visibleIds.has(nodeId)) {
-                    node.addClass('highlighted');
-                    node.select();
-                }
-            });
-
-            expanded.forEach((nodeId) => {
-                const node = cy.getElementById(nodeId);
-                if (node.nonempty() && visibleIds.has(nodeId)) {
-                    node.addClass('expanded');
-                }
-            });
         });
+    }, [normalizeBridgePairs]);
+
+    const applyVisibility = useCallback((cy, expanded, selected, hidden, shouldFit = false) => {
+        if (!cy || cy.destroyed()) return;
+        if (layoutRunningRef.current) {
+            pendingApplyRef.current = { expanded, selected, hidden, shouldFit };
+            return;
+        }
+
+        const visibleIds = computeVisibleNodeIds(expanded, new Set(hidden));
+
+        if (viewModeRef.current === 'bridges') {
+            applyBridgeMode(cy, visibleIds);
+        } else {
+            cy.batch(() => {
+                cy.elements().removeClass('bridge-muted bridge-highlight');
+                cy.nodes().style('display', 'none');
+                cy.edges().style('display', 'none');
+
+                visibleIds.forEach((nodeId) => {
+                    const node = cy.getElementById(nodeId);
+                    if (node.nonempty()) {
+                        node.style('display', 'element');
+                    }
+                });
+
+                cy.edges().forEach((edge) => {
+                    const srcId = edge.data('source');
+                    const tgtId = edge.data('target');
+                    if (visibleIds.has(srcId) && visibleIds.has(tgtId)) {
+                        edge.style('display', 'element');
+                    }
+                });
+
+                cy.nodes().removeClass('highlighted expanded');
+                cy.nodes().unselect();
+
+                selected.forEach((nodeId) => {
+                    const node = cy.getElementById(nodeId);
+                    if (node.nonempty() && visibleIds.has(nodeId)) {
+                        node.addClass('highlighted');
+                        node.select();
+                    }
+                });
+
+                expanded.forEach((nodeId) => {
+                    const node = cy.getElementById(nodeId);
+                    if (node.nonempty() && visibleIds.has(nodeId)) {
+                        node.addClass('expanded');
+                    }
+                });
+            });
+        }
 
         const visibleNodes = cy.nodes().filter(n => n.style('display') === 'element');
         const visibleEdges = cy.edges().filter(e => e.style('display') === 'element');
@@ -158,6 +257,12 @@ const GraphField = forwardRef(({
                         easing: 'ease-in-out'
                     });
                 }
+            }
+            // Если за время layout-а пришёл ещё один запрос — применяем его
+            if (pendingApplyRef.current && cy && !cy.destroyed()) {
+                const next = pendingApplyRef.current;
+                pendingApplyRef.current = null;
+                applyVisibility(cy, next.expanded, next.selected, next.hidden, next.shouldFit);
             }
         });
 
@@ -295,7 +400,7 @@ const GraphField = forwardRef(({
                 panningEnabled: true,
                 minZoom: 0.1,
                 maxZoom: 5,
-                wheelSensitivity: 0.3,
+                wheelSensitivity: 1,
 
                 style: [
                     // В секции style cytoscape, заменяем базовый стиль node:
@@ -415,6 +520,46 @@ const GraphField = forwardRef(({
                             'line-style': 'dashed',
                             'arrow-scale': 0.9
                         }
+                    },
+                    {
+                        selector: 'edge.bridge-muted',
+                        style: {
+                            'width': 2,
+                            'line-color': '#c8c8c8',
+                            'target-arrow-color': '#c8c8c8',
+                            'target-arrow-shape': 'triangle',
+                            'curve-style': 'bezier',
+                            'arrow-scale': 1.0
+                        }
+                    },
+                    {
+                        selector: 'edge.bridge-highlight',
+                        style: {
+                            'width': 3.5,
+                            'line-color': '#2e7d32',
+                            'target-arrow-color': '#2e7d32',
+                            'target-arrow-shape': 'triangle',
+                            'curve-style': 'bezier',
+                            'arrow-scale': 1.1
+                        }
+                    },
+                    {
+                        selector: 'node.bridge-muted',
+                        style: {
+                            'background-color': '#d9d9d9',
+                            'color': '#4d4d4d',
+                            'border-color': '#b0b0b0',
+                            'border-width': '3px'
+                        }
+                    },
+                    {
+                        selector: 'node.bridge-highlight',
+                        style: {
+                            'background-color': '#2e7d32',
+                            'color': '#ffffff',
+                            'border-color': '#1b5e20',
+                            'border-width': '4px'
+                        }
                     }
                 ],
                 layout: { name: 'preset' }
@@ -434,14 +579,13 @@ const GraphField = forwardRef(({
                 const nodeType = tappedNode.data('nodeType');
                 const hasChildren = tappedNode.data('hasChildren') === 'true';
 
+                // Клик не выделяет — отменяем дефолтное выделение cytoscape
+                tappedNode.unselect();
+
                 if (hasChildren && (nodeType === 'discipline' || nodeType === 'topic')) {
                     if (onToggleExpandRef.current) {
                         onToggleExpandRef.current(nodeId);
                     }
-                }
-
-                if (onToggleNodeSelectionRef.current) {
-                    onToggleNodeSelectionRef.current(nodeId);
                 }
             });
 
@@ -498,6 +642,33 @@ const GraphField = forwardRef(({
         applyVisibility(cyRef.current, expandedNodes, selectedNodeIds, hiddenNodeIds, false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [expandedNodes]);
+
+    useEffect(() => {
+        if (!cyRef.current || cyRef.current.destroyed()) return;
+
+        const cy = cyRef.current;
+
+        const runApply = () => applyVisibility(cy, expandedNodesRef.current, selectedNodeIdsRef.current, hiddenNodeIds, false);
+
+        if (viewMode === 'bridges') {
+            // If a layout is running, schedule highlighting after it finishes
+            if (layoutRunningRef.current) {
+                try {
+                    cy.once('layoutstop', () => {
+                        // small timeout to ensure styles settle
+                        setTimeout(() => runApply(), 30);
+                    });
+                } catch (e) {
+                    runApply();
+                }
+            } else {
+                runApply();
+            }
+        } else {
+            runApply();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [bridgePairs, viewMode]);
 
     // ===== РЕАКЦИЯ НА ИЗМЕНЕНИЕ selectedNodeIds / hiddenNodeIds =====
     useEffect(() => {
