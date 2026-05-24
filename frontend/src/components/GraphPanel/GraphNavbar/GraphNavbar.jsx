@@ -1,5 +1,5 @@
 import React from 'react';
-import Button from '../../Button/Button';
+import Button from '../../UI/Button/Button';
 import NavbarSelect from "../../NavbarSelect/NavbarSelect";
 import { useLogout } from '../../../hooks/useLogout';
 import './GraphNavbar.css';

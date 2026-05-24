@@ -24,6 +24,7 @@ const GraphField = forwardRef(({
     const onSelectionChangeRef = useRef(onSelectionChange);
     const onToggleExpandRef = useRef(onToggleExpand);
     const layoutRunningRef = useRef(false);
+    const pendingApplyRef = useRef(null);
 
     const expandedNodesRef = useRef(expandedNodes);
     const childrenMapRef = useRef(childrenMap);
@@ -83,7 +84,10 @@ const GraphField = forwardRef(({
 
     const applyVisibility = useCallback((cy, expanded, selected, hidden, shouldFit = false) => {
         if (!cy || cy.destroyed()) return;
-        if (layoutRunningRef.current) return;
+        if (layoutRunningRef.current) {
+            pendingApplyRef.current = { expanded, selected, hidden, shouldFit };
+            return;
+        }
 
         const visibleIds = computeVisibleNodeIds(expanded, new Set(hidden));
 
@@ -158,6 +162,12 @@ const GraphField = forwardRef(({
                         easing: 'ease-in-out'
                     });
                 }
+            }
+            // Если за время layout-а пришёл ещё один запрос — применяем его
+            if (pendingApplyRef.current && cy && !cy.destroyed()) {
+                const next = pendingApplyRef.current;
+                pendingApplyRef.current = null;
+                applyVisibility(cy, next.expanded, next.selected, next.hidden, next.shouldFit);
             }
         });
 
@@ -295,7 +305,7 @@ const GraphField = forwardRef(({
                 panningEnabled: true,
                 minZoom: 0.1,
                 maxZoom: 5,
-                wheelSensitivity: 0.3,
+                wheelSensitivity: 1,
 
                 style: [
                     // В секции style cytoscape, заменяем базовый стиль node:
@@ -434,14 +444,13 @@ const GraphField = forwardRef(({
                 const nodeType = tappedNode.data('nodeType');
                 const hasChildren = tappedNode.data('hasChildren') === 'true';
 
+                // Клик не выделяет — отменяем дефолтное выделение cytoscape
+                tappedNode.unselect();
+
                 if (hasChildren && (nodeType === 'discipline' || nodeType === 'topic')) {
                     if (onToggleExpandRef.current) {
                         onToggleExpandRef.current(nodeId);
                     }
-                }
-
-                if (onToggleNodeSelectionRef.current) {
-                    onToggleNodeSelectionRef.current(nodeId);
                 }
             });
 

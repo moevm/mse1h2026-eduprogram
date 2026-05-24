@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { getChildType, getRussianType, getPlaceholder, generateId } from './utils';
 import './TreeEditor.css';
+import Input from '../UI/Input/Input';
+import IconButton from '../UI/IconButton/IconButton';
 
 const TreeNode = ({ node, onUpdate, onAddSibling, level = 0 }) => {
 
@@ -89,19 +91,18 @@ const TreeNode = ({ node, onUpdate, onAddSibling, level = 0 }) => {
       <div className="node-content">
 
         {/* Кнопка свернуть/развернуть */}
-        <button
+        <IconButton
           className="toggle-btn"
           onClick={() => setIsExpanded(!isExpanded)}
           disabled={!node.children || node.children.length === 0}
         >
           {node.children && node.children.length > 0
             ? (isExpanded ? '-' : '+') : '.'} {/* точка означает "нет детей" */}
-        </button>
+        </IconButton>
 
         {/* Поле ввода названия */}
-        <input
+        <Input
           ref={inputRef}
-          className="node-input"
           type="text"
           value={node.name}
           onChange={handleNameChange}
@@ -116,20 +117,18 @@ const TreeNode = ({ node, onUpdate, onAddSibling, level = 0 }) => {
 
         {/* Кнопка добавления ребенка (темы/подтемы) */}
         {canAddChild &&
-          <button
-            className="action-btn add-btn"
+          <IconButton
             onClick={handleAddChild}>
             +
-          </button>
+          </IconButton>
         }
 
         {/* Кнопка удаления */}
-        <button
-          className="action-btn delete-btn"
+        <IconButton
           onClick={handleDelete}
         >
           X
-        </button>
+        </IconButton>
 
       </div>
 
@@ -139,7 +138,7 @@ const TreeNode = ({ node, onUpdate, onAddSibling, level = 0 }) => {
 
           {/* Поле ввода новой предшествующей дисциплины */}
           <div className="prev-input">
-            <input
+            <Input
               type="text"
               placeholder="Предшествующая дисциплина"
               value={prevInput}
@@ -151,7 +150,9 @@ const TreeNode = ({ node, onUpdate, onAddSibling, level = 0 }) => {
                 }
               }}
             />
-            <button onClick={handleAddPrev}>+</button>
+            <IconButton onClick={handleAddPrev}>
+              +
+            </IconButton>
           </div>
 
           {/* Список добавленных предшествующих дисциплин */}
@@ -159,8 +160,7 @@ const TreeNode = ({ node, onUpdate, onAddSibling, level = 0 }) => {
             {(node.previousDisciplines || []).map((p, i) => (
               <li key={i} className="prev-item">
                 <span>{p}</span>
-                <button
-                  className="remove-prev"
+                <IconButton
                   onClick={() => {
                     const updated = node.previousDisciplines.filter(
                       (_, index) => index !== i
@@ -171,7 +171,7 @@ const TreeNode = ({ node, onUpdate, onAddSibling, level = 0 }) => {
                     });
                   }}>
                   X
-                </button>
+                </IconButton>
               </li>
             ))
             }

@@ -74,23 +74,9 @@
     width: 100% !important;
 }
 
-/* Объединенные стили для formats-panel */
 .formats-panel {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    margin: 12px 0;
-    padding: 8px;
-    background: #ffffff;
-    border: 1px solid #cfcfcf;
-    border-radius: 12px;
-    width: 100%;
-    min-width: 0; /* Для правильного сжатия */
-}
-
-.formats-panel select {
-    flex: 1;
-    min-width: 0; /* Позволяет select сжиматься */
+    height: 45px;
+    min-width: 0;
     width: auto;
     padding: 8px 12px;
     font-family: 'Inter', sans-serif;
@@ -101,18 +87,43 @@
     cursor: pointer;
 }
 
-.formats-panel select:hover {
+.formats-panel:hover {
     border-color: #000000;
 }
 
-.formats-panel select:focus {
+.formats-panel:focus {
     outline: none;
     border-color: #000000;
 }
 
-.formats-panel button {
-    flex-shrink: 0; /* Кнопка не сжимается */
-    min-width: 40px !important;
-    width: auto !important;
-    padding: 8px 12px !important;
+.report-download-section {
+    display: flex;
+    gap: 10px;
+}
+
+.report-download-section .custom-button {
+    flex: 1 1 0;
+    min-width: 0;
+    width: 100%;
+}
+
+.graph-aside__divider {
+    height: 1px;
+    background: #d5d5d5;
+    margin: 4px 0;
+}
+
+.graph-download-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.graph-download-row .formats-panel {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.graph-download-row .icon-button {
+    flex-shrink: 0;
 }

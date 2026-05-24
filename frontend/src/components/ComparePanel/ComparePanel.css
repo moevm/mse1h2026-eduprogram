@@ -15,48 +15,75 @@
     color: #999;
 }
 
-.recommendations-drawer {
-    display: flex;
-    flex-direction:  column;
-    gap: 10px;
-    position: fixed;
-    top: 0;
-    right: 0;
-    width: 320px;
-    height: 100%;
-    background: #fff;
-    z-index: 1000;
-    box-shadow: -4px 0 20px rgba(0,0,0,0.2);
-    padding: 20px;
+.report-view {
+    background: #e8e8eb;
     overflow-y: auto;
-    transform: translateX(100%);
-    animation: slideIn 0.25s ease forwards;
+    padding: 40px 24px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
 }
 
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-    }
-    to {
-        transform: translateX(0);
-    }
+.report-document {
+    background: #ffffff;
+    width: 100%;
+    max-width: 794px;
+    min-height: 1123px;
+    padding: 96px 96px 120px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    border: 1px solid #d1d1d6;
+    font-family: "Inter", sans-serif;
+    color: #1a1a1a;
+    box-sizing: border-box;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+.report-document__title {
+    text-align: center;
+    font-size: 24px;
+    font-weight: 700; 
+    margin: 0 0 36px;
+    letter-spacing: 0.02em;
 }
 
-.recommendations-drawer ul {
-    margin-top: 10px;
-    padding-left: 18px;
+.report-document__list {
+    margin: 0;
+    padding-left: 28px;
+    counter-reset: rec-counter;
+    list-style: none;
 }
 
-.recommendations-drawer li {
-    margin-bottom: 8px;
-    font-size: 14px;
+.report-document__item {
+    counter-increment: rec-counter;
+    position: relative;
+    margin-bottom: 14px;
+    font-size: 15px;
+    line-height: 1.7;
+    text-align: justify;
+}
+
+.report-document__item::before {
+    content: counter(rec-counter) ".";
+    position: absolute;
+    left: -28px;
+    width: 24px;
+    text-align: right;
+    font-weight: 700;
+}
+
+.report-document__empty {
+    text-align: center;
+    color: #6e6e73;
+    font-style: italic;
+    margin: 40px 0;
+}
+
+@media (max-width: 700px) {
+    .report-view {
+        padding: 16px;
+    }
+
+    .report-document {
+        padding: 48px 32px 64px;
+        min-height: auto;
+    }
 }

@@ -12,13 +12,15 @@ function Input({
   required,
   icon 
 }) {
+  const hasIcon = icon === 'mail' || icon === 'settings';
+
   const inputProps = {
     type,
     placeholder,
     value,
     onChange,
     required,
-    className: "custom-input"
+    className: `custom-input${hasIcon ? '' : ' custom-input--no-icon'}`
   };
   
   if (name) inputProps.name = name;
