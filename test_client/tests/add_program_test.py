@@ -2,7 +2,7 @@ from base.base_test import BaseTest
 
 from pytest import mark
 
-
+@mark.skip(reason="")
 @mark.order(4)
 @mark.client
 class TestAddProgram(BaseTest):

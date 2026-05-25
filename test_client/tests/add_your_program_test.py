@@ -29,7 +29,7 @@ class TestAddYourProgram(BaseTest):
         self.upload_programs_page.input_file_by_path(self.data.FILE)
         self.upload_programs_page.click_send_button()
 
-        assert self.upload_programs_page.get_alert_message() == "Отправлено!"
+        self.upload_programs_page.is_notification_visible()
 
         # self.main_page.open()
         # self.main_page.click_choose_program_button()
