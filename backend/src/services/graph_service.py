@@ -347,35 +347,42 @@ class GraphService:
         return index
 
     def _subtopic_similarity(self, left: str, right: str) -> float:
-        left_norm = self._normalize_text(left)
-        right_norm = self._normalize_text(right)
+       left_norm = self._normalize_text(left)
+       right_norm = self._normalize_text(right)
+        
+       LEFT_LIMIT = float(os.getenv('LEFT_LIMIT', '0.6'))
+       RIGHT_LIMIT = float(os.getenv('RIGHT_LIMIT', '0.4'))
+       USE_LLM = int(os.getenv('USE_LLM', '0'))
+        
+       if not left_norm or not right_norm:
+           return 0.0
+       if left_norm == right_norm:
+           return 1.0
+       if left_norm in right_norm or right_norm in left_norm:
+           return 0.9
 
-        if not left_norm or not right_norm:
-            return 0.0
-        if left_norm == right_norm:
-            return 1.0
-        if left_norm in right_norm or right_norm in left_norm:
-            return 0.9
+       left_tokens = set(left_norm.split())
+       right_tokens = set(right_norm.split())
+       if left_tokens and right_tokens:
+           token_score = len(left_tokens & right_tokens) / max(1, min(len(left_tokens), len(right_tokens)))
+           if token_score >= 0.5:
+               return max(0.75, token_score)
 
-        left_tokens = set(left_norm.split())
-        right_tokens = set(right_norm.split())
-        if left_tokens and right_tokens:
-            token_score = len(left_tokens & right_tokens) / max(1, min(len(left_tokens), len(right_tokens)))
-            if token_score >= 0.5:
-                return max(0.75, token_score)
+       sequence_score = SequenceMatcher(None, left_norm, right_norm).ratio()
 
-        sequence_score = SequenceMatcher(None, left_norm, right_norm).ratio()
+       if (sequence_score < LEFT_LIMIT and 
+           sequence_score >= RIGHT_LIMIT and 
+           self.gigachat and 
+           USE_LLM == 1):
+           try:
+               llm_result = self.gigachat.check_subtopic_similarity(left, right)
+               print(f"LLM check call for '{left}' vs '{right}': '{llm_result}'")
+               if llm_result:
+                   return 0.9
+           except Exception as e:
+               print(f"LLM check failed for '{left}' vs '{right}': {e}")
 
-        if sequence_score < 0.75 and sequence_score >= 0.3 and self.gigachat:
-            try:
-                return 0.0
-                llm_result = self.gigachat.check_subtopic_similarity(left, right)
-                if llm_result:
-                    return 0.9
-            except Exception as e:
-                print(f"LLM check failed for '{left}' vs '{right}': {e}")
-
-        return sequence_score
+       return sequence_score
 
     def _best_subtopic_overlap(self, target_subtopic: str, compare_programs: List[Dict[str, Any]]) -> int:
         if not compare_programs:
