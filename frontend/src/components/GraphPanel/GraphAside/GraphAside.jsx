@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import "./GraphAside.css"
 import Button from "../../UI/Button/Button";
@@ -21,6 +21,22 @@ const GraphAside = ({
 }) => {
     const navigate = useNavigate();
     const [searchValue, setSearchValue] = React.useState('');
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+        const onKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+                e.preventDefault();
+                if (inputRef.current) {
+                    inputRef.current.focus();
+                    inputRef.current.select();
+                }
+            }
+        };
+
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, []);
 
     const handleSubmit = (event) => {
         event.preventDefault();
@@ -46,6 +62,7 @@ const GraphAside = ({
                 </label>
                 <input
                     id="graph-node-search"
+                    ref={inputRef}
                     className="graph-aside__search-input"
                     type="text"
                     value={searchValue}

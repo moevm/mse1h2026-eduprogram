@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import "./CompareAside.css"
 import Button from "../../UI/Button/Button";
@@ -23,6 +23,22 @@ const CompareAside = ({
     const [downloading, setDownloading] = useState(false);
     const [reportDownloading, setReportDownloading] = useState(false);
     const [searchValue, setSearchValue] = useState('');
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+        const onKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+                e.preventDefault();
+                if (inputRef.current) {
+                    inputRef.current.focus();
+                    inputRef.current.select();
+                }
+            }
+        };
+
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, []);
 
     const domain = process.env.REACT_APP_API_URL_GET_PROGRAMMS || process.env.REACT_APP_API_URL || 'localhost:8000';
     const API_BASE_URL = domain.startsWith('http') ? domain : `http://${domain}`;
@@ -109,6 +125,7 @@ const CompareAside = ({
                 </label>
                 <input
                     id="compare-node-search"
+                    ref={inputRef}
                     className="graph-aside__search-input"
                     type="text"
                     value={searchValue}
