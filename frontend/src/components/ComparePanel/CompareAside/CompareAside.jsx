@@ -4,6 +4,7 @@ import "./CompareAside.css"
 import Button from "../../UI/Button/Button";
 import IconButton from "../../UI/IconButton/IconButton";
 import { useNotification } from "../../UI/Notification/Notification";
+import exportIcon from "../../../assets/svg/export.svg";
 
 
 const CompareAside = ({
@@ -174,8 +175,10 @@ const CompareAside = ({
                     onClick={() => downloadFile('download-graph', selected, `graph.${selected.toLowerCase()}`)}
                     disabled={!selected || downloading}
                     title="Скачать граф"
+                    icon={!downloading ? exportIcon : null}
+                    alt="Скачать граф"
                 >
-                    {downloading ? '⏳' : '⬇️'}
+                    {downloading ? '⏳' : null}
                 </IconButton>
             </div>
 
