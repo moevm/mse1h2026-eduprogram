@@ -140,7 +140,7 @@ const TreeEditor = ({ isOpen, onClose }) => {
 
         {showJson &&
           <JsonViewer
-            data={convertToBackendFormat(programName, disciplines)}
+            data={convertToBackendFormat(programName, universityName, disciplines)}
           />
         }
       </div>

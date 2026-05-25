@@ -31,10 +31,12 @@ export const getPlaceholder = (type) => {
 };
 
 
-export const convertToBackendFormat = (programName, universityName, disciplines) => {
+export const convertToBackendFormat = (programName, universityName, disciplines = []) => {
   const result = {};
 
-  result[programName] = disciplines.map((discipline) => {
+  const safeDisciplines = Array.isArray(disciplines) ? disciplines : [];
+
+  result[programName] = safeDisciplines.map((discipline) => {
     const topics = discipline.children.map((topic) => {
       const topicObj = {};
       topicObj[topic.name] = topic.children.map((sub) => sub.name);
