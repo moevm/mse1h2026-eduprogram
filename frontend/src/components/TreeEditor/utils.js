@@ -31,7 +31,7 @@ export const getPlaceholder = (type) => {
 };
 
 
-export const convertToBackendFormat = (programName, disciplines) => {
+export const convertToBackendFormat = (programName, universityName, disciplines) => {
   const result = {};
 
   result[programName] = disciplines.map((discipline) => {
@@ -49,17 +49,23 @@ export const convertToBackendFormat = (programName, disciplines) => {
     };
   });
 
+  result['nameUniversity'] = universityName;
+
   return result;
 };
 
 const domain = process.env.REACT_APP_API_URL_ADD_PROGRAM || process.env.REACT_APP_API_URL || 'localhost:8000';
 const API_BASE_URL = domain.startsWith('http') ? domain : `http://${domain}`;
 
-export const submitProgram = async (programName, disciplines) => {
-  const data = convertToBackendFormat(programName, disciplines);
+export const submitProgram = async (programName, universityName, disciplines) => {
+  const data = convertToBackendFormat(programName, universityName, disciplines);
 
   if (!programName || !programName.trim()) {
     return { success: false, error: 'Укажите название образовательной программы' };
+  }
+
+  if (!universityName || !universityName.trim()) {
+    return { success: false, error: 'Укажите название университета' };
   }
 
   try {

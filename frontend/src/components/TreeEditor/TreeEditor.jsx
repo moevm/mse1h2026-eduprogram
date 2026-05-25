@@ -12,6 +12,7 @@ import './TreeEditor.css';
 const TreeEditor = ({ isOpen, onClose }) => {
   const notify = useNotification();
   const [programName, setProgramName] = useState('');
+  const [universityName, setUniversityName] = useState('');
 
   const [disciplines, setDisciplines] = useState([
     {
@@ -56,7 +57,7 @@ const TreeEditor = ({ isOpen, onClose }) => {
   const handleSubmitProgram = async () => {
     setSubmitting(true);
     try {
-      const result = await submitProgram(programName, disciplines);
+      const result = await submitProgram(programName, universityName, disciplines);
       if (result.success) {
         notify('Рабочая программа успешно добавлена', { type: 'success' });
         onClose();
@@ -77,6 +78,13 @@ const TreeEditor = ({ isOpen, onClose }) => {
       size="large"
     >
       <div className="tree-editor-container">
+        <Input
+          type="text"
+          placeholder="Название университета"
+          icon="settings"
+          value={universityName}
+          onChange={(e) => setUniversityName(e.target.value)}
+        />
         <Input
           type="text"
           placeholder="Название образовательной программы"
