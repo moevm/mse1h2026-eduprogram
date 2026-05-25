@@ -6,12 +6,23 @@ import IconButton from "../../UI/IconButton/IconButton";
 import { useNotification } from "../../UI/Notification/Notification";
 
 
-const CompareAside = () => {
+const CompareAside = ({
+    onSearch,
+    onSearchClear,
+    onSearchPrev,
+    onSearchNext,
+    hasSearchResults = false,
+    hasMultipleSearchResults = false,
+    searchResultIndex = 0,
+    searchResultCount = 0,
+    searchMessage = ''
+}) => {
     const notify = useNotification();
     const [formats, setFormats] = useState([]);
     const [selected, setSelected] = useState('');
     const [downloading, setDownloading] = useState(false);
     const [reportDownloading, setReportDownloading] = useState(false);
+    const [searchValue, setSearchValue] = useState('');
 
     const domain = process.env.REACT_APP_API_URL_GET_PROGRAMMS || process.env.REACT_APP_API_URL || 'localhost:8000';
     const API_BASE_URL = domain.startsWith('http') ? domain : `http://${domain}`;
@@ -31,6 +42,16 @@ const CompareAside = () => {
     const handleChange = (e) => {
         const value = e.target.value;
         setSelected(value);
+    };
+
+    const handleSubmit = (event) => {
+        event.preventDefault();
+        onSearch?.(searchValue);
+    };
+
+    const handleClear = () => {
+        setSearchValue('');
+        onSearchClear?.();
     };
 
     const downloadFile = async (endpoint, format, defaultFilename) => {
@@ -79,6 +100,48 @@ const CompareAside = () => {
             <Button type="button" onClick={() => { navigate('/main'); }}>
                 Назад
             </Button>
+
+            <div className="graph-aside__divider" />
+
+            <form className="graph-aside__search" onSubmit={handleSubmit}>
+                <label className="graph-aside__search-label" htmlFor="compare-node-search">
+                    Поиск вершины
+                </label>
+                <input
+                    id="compare-node-search"
+                    className="graph-aside__search-input"
+                    type="text"
+                    value={searchValue}
+                    onChange={(event) => setSearchValue(event.target.value)}
+                    placeholder="Введите подстроку"
+                />
+                <div className="graph-aside__search-actions">
+                    <Button type="submit">Найти</Button>
+                    <Button type="button" onClick={handleClear}>Сбросить</Button>
+                </div>
+            </form>
+
+            <div
+                className="graph-aside__search-message"
+                role="status"
+                aria-hidden={!searchMessage}
+            >
+                {searchMessage}
+            </div>
+
+            {hasMultipleSearchResults ? (
+                <div className="graph-aside__search-nav">
+                    <Button type="button" onClick={onSearchPrev} disabled={!hasSearchResults}>
+                        ←
+                    </Button>
+                    <div className="graph-aside__search-counter">
+                        {searchResultIndex + 1} / {searchResultCount}
+                    </div>
+                    <Button type="button" onClick={onSearchNext} disabled={!hasSearchResults}>
+                        →
+                    </Button>
+                </div>
+            ) : null}
 
             <div className="graph-aside__divider" />
 
