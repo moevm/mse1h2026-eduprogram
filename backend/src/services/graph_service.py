@@ -49,7 +49,7 @@ class GraphService:
             {"available-export-formats": list(self._availableExportFormats.keys())}
         )
 
-    def get_export_file(self, format: str, graphId: str) -> Response:
+    def get_export_file(self, format: str, graphId: str, user_id: int = None) -> Response:
         if not self.rdf:
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -60,6 +60,12 @@ class GraphService:
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={"responseMessage": "Unknown format"}
+            )
+
+        if user_id is not None and not self._verify_graph_ownership(graphId, user_id):
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"responseMessage": "Access denied: graph does not belong to this user"}
             )
 
         exportFile = self.rdf.export_graph_as_file(graphId, self._availableExportFormats[format])
@@ -109,8 +115,7 @@ class GraphService:
             {"bridges": find_bridges(graphDisciplines)}
         )
 
-
-    def get_report_file(self, format: str, graphId: str) -> Response:
+    def get_report_file(self, format: str, graphId: str, user_id: int = None) -> Response:
         if not self.db and not self.db.isConnected:
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -122,6 +127,13 @@ class GraphService:
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={"responseMessage": "Error with graphId"}
+            )
+
+        graph_user_id = result[1]
+        if user_id is not None and graph_user_id != user_id:
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"responseMessage": "Access denied: report does not belong to this user"}
             )
 
         if format not in ("docx", "pdf"):
@@ -160,8 +172,27 @@ class GraphService:
         )
 
     @staticmethod
-    def _resolve_university_and_program(path_to_program_folder: str,
-                                        university_name: Optional[str]) -> Tuple[str, str]:
+    def _verify_graph_ownership(graphId: str, user_id: int) -> bool:
+        """
+        Проверяет, принадлежит ли граф пользователю.
+        GraphId содержит user_id в формате: {университет_id_{user_id}}/{программа}
+        """
+        try:
+            if " id " in graphId:
+                parts = graphId.split("/")
+                if parts:
+                    first_part = parts[0]
+                    import re
+                    match = re.search(r"id\s+(\d+)", first_part)
+                    if match:
+                        extracted_user_id = int(match.group(1))
+                        return extracted_user_id == user_id
+            return True  
+        except Exception:
+            return False
+
+    @staticmethod
+    def _resolve_university_and_program(path_to_program_folder: str, university_name: Optional[str]) -> Tuple[str, str]:
         program_name = str(path_to_program_folder or "").strip()
         resolved_university = str(university_name or "").strip()
 
@@ -383,7 +414,7 @@ class GraphService:
 
         from collections import Counter
 
-        foreign_subtopic_counts: Dict[str, Tuple[int, str]] = {}  # subtopic -> (count, discipline)
+        foreign_subtopic_counts: Dict[str, List[Any]] = {} 
 
         for compare_program in compare_payloads:
             program_name = next(iter(compare_program.keys()), "")

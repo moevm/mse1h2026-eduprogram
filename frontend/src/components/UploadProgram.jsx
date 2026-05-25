@@ -4,6 +4,7 @@ import Input from "./UI/Input/Input";
 import Button from "./UI/Button/Button";
 import Modal from "./UI/Modal/Modal";
 import { useNotification } from "./UI/Notification/Notification";
+import { fetchWithAuth } from '../services/api/httpClient';
 
 // Настройки IndexedDB
 const dbName = "ProgramFilesDB";
@@ -202,11 +203,10 @@ export default function UploadProgram({ isOpen, onClose }) {
     const formData = new FormData();
     files.forEach((file) => formData.append("files", file));
     formData.append("university_name", university);
-    formData.append("id_user", localStorage.getItem("userId"));
     formData.append("program_name", programName.trim());
 
     try {
-      const response = await fetch(
+      const response = await fetchWithAuth(
         `http://${domain}/add-program-from-files`,
         {
           method: "POST",
