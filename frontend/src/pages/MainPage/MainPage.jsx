@@ -202,6 +202,7 @@ const MainPage = () => {
       return;
     }
 
+    setCompareLoading(true);
     try {
       const response = await fetchWithAuth(`${API_BASE_URL}/compare_graphs`, {
         method: 'POST',
@@ -233,6 +234,8 @@ const MainPage = () => {
     } catch (error) {
       console.error('Ошибка сравнения программ:', error);
       setCompareError('Не удалось отправить запрос на сравнение программ');
+    } finally {
+      setCompareLoading(false);
     }
   };
 
@@ -318,8 +321,8 @@ const MainPage = () => {
               <span className="main-card-hint">Сопоставьте две и более программ</span>
             </div>
             <div className="main-card-actions">
-              <Button onClick={handleComparePrograms} disabled={compareLoading}>
-                {compareLoading ? 'Загрузка...' : 'Сравнить программы'}
+              <Button onClick={handleComparePrograms} loading={compareLoading}>
+                Сравнить программы
               </Button>
               <Button onClick={fetchShowHistory} disabled={compareLoading}>
                 {compareLoading ? 'Загрузка...' : 'История сравнения'}
@@ -333,10 +336,10 @@ const MainPage = () => {
               <span className="main-card-hint">Создайте или загрузите программу</span>
             </div>
             <div className="main-card-actions">
-              <Button onClick={handleAddProgram}>
+              <Button onClick={handleAddProgram} loading={isEditorOpen}>
                 Добавить программу
               </Button>
-              <Button onClick={handleManualAdd}>
+              <Button onClick={handleManualAdd} loading={isUploadOpen}>
                 Добавить свою программу
               </Button>
             </div>
@@ -374,6 +377,7 @@ const MainPage = () => {
         onCompare={handleCompareSubmit}
         error={compareError}
         canCompare={compareCandidates.length > 0}
+        loading={compareLoading}
       />
       <HistoryModal
         isOpen={isHistoryOpen}

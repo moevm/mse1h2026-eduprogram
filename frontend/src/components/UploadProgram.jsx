@@ -76,6 +76,7 @@ export default function UploadProgram({ isOpen, onClose }) {
   const [programName, setProgramName] = useState("");
   const isProgramNameValid = programName.trim().length > 0;
   const [programTouched, setProgramTouched] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // Загрузка сохраненных файлов и университета
   useEffect(() => {
@@ -205,6 +206,7 @@ export default function UploadProgram({ isOpen, onClose }) {
     formData.append("university_name", university);
     formData.append("program_name", programName.trim());
 
+    setSubmitting(true);
     try {
       const response = await fetchWithAuth(
         `http://${domain}/add-program-from-files`,
@@ -221,6 +223,8 @@ export default function UploadProgram({ isOpen, onClose }) {
     } catch (error) {
       console.error("Ошибка:", error);
       notify("Ошибка при отправке", { type: 'error' });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -301,7 +305,7 @@ export default function UploadProgram({ isOpen, onClose }) {
           >
             Очистить файлы
           </Button>
-          <Button onClick={handleSubmit} disabled={!isProgramNameValid}>
+          <Button onClick={handleSubmit} disabled={!isProgramNameValid} loading={submitting}>
             Отправить
           </Button>
         </div>

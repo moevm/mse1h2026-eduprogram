@@ -2,7 +2,7 @@ import React from 'react';
 import './TreeEditor.css';
 import Button from '../UI/Button/Button';
 
-const TreeActions = ({ onAddDiscipline, onToggleJson, showJson, onSubmit }) => {
+const TreeActions = ({ onAddDiscipline, onToggleJson, showJson, onSubmit, submitting = false }) => {
   return (
     <div className="actions">
       <Button onClick={onAddDiscipline}>
@@ -11,7 +11,7 @@ const TreeActions = ({ onAddDiscipline, onToggleJson, showJson, onSubmit }) => {
       <Button onClick={onToggleJson}>
         {showJson ? 'Скрыть JSON' : 'Показать JSON'}
       </Button>
-      <Button className="align-end" onClick={onSubmit}>
+      <Button className="align-end" onClick={onSubmit} loading={submitting}>
         Отправить программу
       </Button>
     </div>

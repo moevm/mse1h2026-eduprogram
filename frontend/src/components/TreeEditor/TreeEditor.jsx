@@ -24,6 +24,7 @@ const TreeEditor = ({ isOpen, onClose }) => {
   ]);
 
   const [showJson, setShowJson] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleAddDiscipline = () => {
     setDisciplines([
@@ -53,13 +54,18 @@ const TreeEditor = ({ isOpen, onClose }) => {
   };
 
   const handleSubmitProgram = async () => {
-    const result = await submitProgram(programName, disciplines);
-    if (result.success) {
-      notify('Рабочая программа успешно добавлена', { type: 'success' });
-      onClose();
-      return;
+    setSubmitting(true);
+    try {
+      const result = await submitProgram(programName, disciplines);
+      if (result.success) {
+        notify('Рабочая программа успешно добавлена', { type: 'success' });
+        onClose();
+        return;
+      }
+      notify(result.error || 'Ошибка отправки программы', { type: 'error' });
+    } finally {
+      setSubmitting(false);
     }
-    notify(result.error || 'Ошибка отправки программы', { type: 'error' });
   };
 
   return (
@@ -121,6 +127,7 @@ const TreeEditor = ({ isOpen, onClose }) => {
           onToggleJson={handleToggleJson}
           showJson={showJson}
           onSubmit={handleSubmitProgram}
+          submitting={submitting}
         />
 
         {showJson &&

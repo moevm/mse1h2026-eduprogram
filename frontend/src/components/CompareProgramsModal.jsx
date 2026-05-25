@@ -14,6 +14,7 @@ const CompareProgramsModal = ({
   onCompare,
   error,
   canCompare,
+  loading = false,
 }) => {
   const selectedMainProgram = programs.find((program) => program.id === selectedMainProgramId) || null;
   const comparePrograms = programs.filter((program) => program.id !== selectedMainProgramId);
@@ -72,6 +73,7 @@ const CompareProgramsModal = ({
           type="button"
           onClick={onCompare}
           disabled={!canCompare || !selectedMainProgram}
+          loading={loading}
           width="100%"
         >
           Сравнить
