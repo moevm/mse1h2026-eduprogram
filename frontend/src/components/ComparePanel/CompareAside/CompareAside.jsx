@@ -6,6 +6,8 @@ import IconButton from "../../UI/IconButton/IconButton";
 import { useNotification } from "../../UI/Notification/Notification";
 import exportIcon from "../../../assets/svg/export.svg";
 
+import { fetchWithAuth } from '../../../services/api/httpClient';
+
 
 const CompareAside = ({
     onSearch,
@@ -75,7 +77,7 @@ const CompareAside = ({
         setDownloading(true);
 
         try {
-            const response = await fetch(`${API_BASE_URL}/${endpoint}?format=${format}&graphId=${localStorage.getItem('graph_id')}`, {
+            const response = await fetchWithAuth(`${API_BASE_URL}/${endpoint}?format=${format}&graphId=${localStorage.getItem('graph_id')}`, {
                 method: 'GET',
             });
 
