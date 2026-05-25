@@ -1,0 +1,87 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: eduprogram-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eduprogram}
+      POSTGRES_USER: ${POSTGRES_USER:-eduprogram}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eduprogram_pass}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./backend/src/dataBase/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eduprogram} -d ${POSTGRES_DB:-eduprogram}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  rdf:
+    image: ontotext/graphdb:11.3.0
+    container_name: eduprogram-rdf
+    restart: unless-stopped
+    environment:
+      - GDB_HEAP_SIZE=2g
+      - GDB_MIN_MEM=1g
+      - GDB_MAX_MEM=2g
+    volumes:
+      - rdf_data:/opt/graphdb/home
+      - ./backend/src/rdf/.rdf.license:/opt/graphdb/home/conf/graphdb.license:ro
+    ports:
+      - "7200:7200"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: eduprogram-backend
+    restart: unless-stopped
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8000
+      DB_NAME: ${POSTGRES_DB:-eduprogram}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-eduprogram}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-eduprogram_pass}
+      DB_MIN_CONN_NUMBER: 1
+      DB_MAX_CONN_NUMBER: 10
+      LOCAL_PATH_TO_STORAGE: /app/storage
+      GRAPHDB_HOST: rdf
+      GRAPHDB_PORT: ${GRAPHDB_PORT}
+      GRAPHDB_USER: ${GRAPHDB_USER}
+      GRAPHDB_PASSWORD: ${GRAPHDB_PASSWORD}
+      GRAPHDB_REPOSITORY: ${GRAPHDB_REPOSITORY}
+      GIGACHAT_CLIENT_ID: ${GIGACHAT_CLIENT_ID}
+      GIGACHAT_AUTHORIZATION_KEY: ${GIGACHAT_AUTHORIZATION_KEY}
+      GIGACHAT_AUTH_CERT_PATH: ${GIGACHAT_AUTH_CERT_PATH}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-test_secret_key}
+    volumes:
+      - backend_storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      rdf:
+        condition: service_started
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-localhost:8000}
+        REACT_APP_API_URL_ADD_PROGRAM: ${REACT_APP_API_URL_ADD_PROGRAM:-localhost:8000}
+        REACT_APP_API_URL_GET_PROGRAMMS: ${REACT_APP_API_URL_GET_PROGRAMMS:-localhost:8000}
+    container_name: eduprogram-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  db_data:
+  backend_storage:
+  rdf_data:

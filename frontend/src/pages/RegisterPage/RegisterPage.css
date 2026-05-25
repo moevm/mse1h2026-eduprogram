@@ -1,0 +1,9 @@
+.register-container {
+    background-color: rgb(225, 225, 225);
+
+    background-image:
+            linear-gradient(rgba(180,180,180,0.25) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(180,180,180,0.25) 1px, transparent 1px);
+
+    background-size: 50px 50px;
+}

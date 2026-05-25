@@ -1,0 +1,27 @@
+1. ДЛЯ ЗАПУСКА ТЕСТОВ НУЖНО В ДИРЕКТОРИИ С ТЕСТАМИ(test_client и test_api) ДОБАВИТЬ СЛЕДУЮЩИЕ ФАЙЛЫ: .env. ДАННЫЕ ПОДТЯГИВАЮТСЯ ДЛЯ ТЕСТОВ ОТТУДА
+
+.env ДЛЯ test_client:
+
+LOGIN=test_register_user@mail.ru
+PASSWORD=1234
+FILE=/test_client/test_data/spbu_test.pdf
+
+
+.env ДЛЯ test_api:
+
+LOGIN=test_register_user@mail.ru
+PASSWORD=1234
+HOST=http://0.0.0.0:8000
+USERID=1
+
+2. ТЕСТЫ ЗАПУСКАЮТСЯ ИЗ КОРНЕВОЙ ДИРЕКТОРИИ ПРОЕКТА /mse1h2026-eduprogram
+
+3. ДЛЯ ЗАПУСКА ТЕСТОВ ИЗ КОРНЕВОЙ ДИРЕКТОРИИ:
+pytest -v - запуск всех тестов(клиент + api)
+pytest -v -m api - запуск тестов для api
+pytest -v -m client - запуск тестов для клиента
+
+4. ЕСЛИ НУЖНО ПОСМОТРЕТЬ НА РАБОТУ АВТОТЕСТОВ (ВКЛЮЧИТЬ ОТОБРАЖЕНИЕ БРАУЗЕРА) В test/conftest.py В ФИКСТУРЕ driver ЗАКОММЕНТИРОВАТЬ СТРОЧКУ:
+options.add_argument("--headless")
+
+5. ВСЕ ТЕСТЫ Е2Е, ТО ЕСТЬ ПРОВЕРЯЮТ ВСЕ ВЗАИМОДЕЙСТВИЕ front-back-db, ДЛЯ РАБОТЫ ТЕСТОВ НУЖНЫ ЭТИ РАБОТАЮЩИЕ СЕРВИСЫ
