@@ -17,7 +17,6 @@ export default function CompareNavbar({ onSectionChange }) {
                 <NavbarSelect
                     options={[
                         { label: "Граф", value: "graph", onClick: () => onSectionChange?.('graph') },
-                        { label: "Мосты", value: "bridges", onClick: () => onSectionChange?.('bridges') },
                         { label: "Отчет", value: "report", onClick: () => onSectionChange?.('report') },
                     ]}
                 />

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProgramsModal from '../../components/ProgramsModal';
 import CompareProgramsModal from '../../components/CompareProgramsModal';
@@ -19,9 +19,11 @@ const MainPage = () => {
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [compareLoading, setCompareLoading] = useState(false);
+  const [compareSubmitting, setCompareSubmitting] = useState(false);
   const [compareError, setCompareError] = useState('');
   const [selectedMainProgramId, setSelectedMainProgramId] = useState('');
   const [selectedCompareProgramIds, setSelectedCompareProgramIds] = useState([]);
+  const compareSubmitLockRef = useRef(false);
 
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyData, setHistoryData] = useState([]);
@@ -190,6 +192,10 @@ const MainPage = () => {
   };
 
   const handleCompareSubmit = async () => {
+    if (compareSubmitLockRef.current) {
+      return;
+    }
+
     if (!selectedMainProgram) {
       setCompareError('Выберите программу для сравнения');
       return;
@@ -201,6 +207,9 @@ const MainPage = () => {
       setCompareError('Выберите хотя бы одну программу для сравнения');
       return;
     }
+
+    compareSubmitLockRef.current = true;
+    setCompareSubmitting(true);
 
     try {
       const response = await fetchWithAuth(`${API_BASE_URL}/compare_graphs`, {
@@ -233,6 +242,9 @@ const MainPage = () => {
     } catch (error) {
       console.error('Ошибка сравнения программ:', error);
       setCompareError('Не удалось отправить запрос на сравнение программ');
+    } finally {
+      compareSubmitLockRef.current = false;
+      setCompareSubmitting(false);
     }
   };
 
@@ -374,6 +386,7 @@ const MainPage = () => {
         onCompare={handleCompareSubmit}
         error={compareError}
         canCompare={compareCandidates.length > 0}
+        isSubmitting={compareSubmitting}
       />
       <HistoryModal
         isOpen={isHistoryOpen}
