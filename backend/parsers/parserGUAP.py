@@ -7,14 +7,14 @@ from typing import Any
 from pymupdf import pymupdf
 
 class ParserGUAP:
-    """Парсер РПД ГУАП для сценария с загрузкой PDF через FastAPI.
+    """Парсер РПД ГУАП для загрузки PDF через FastAPI.
 
-    Сейчас у класса одна публичная функция: parse().
-    Она принимает список файлов в виде пар `(filename, bytes)` и название
-    образовательной программы, а возвращает JSON в формате:
+    На вход принимает список файлов и название программы.
+    На выходе отдаёт JSON.
 
+    Формат вывода:
     {
-      "Название образовательной программы": [
+      "Название программы": [
         {
           "Дисциплина": {
             "previousDisciplines": ["..."],
@@ -620,7 +620,7 @@ class ParserGUAP:
             if section_match:
                 title_part = section_match.group(2).strip()
 
-                # Иногда заголовок раздела переносится на следующую строку.
+                # Объединение заголовка раздела, если он переносится на следующую строку.
                 if (not title_part) and i + 1 < len(raw_lines):
                     nxt = raw_lines[i + 1].strip()
                     if nxt and not re.match(r'^(Раздел\s*\d+|\d+\.\d+\.?|\d+)$', nxt, re.IGNORECASE):
