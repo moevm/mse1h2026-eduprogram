@@ -4,7 +4,7 @@ import GraphAside from './GraphAside/GraphAside';
 import GraphField from './GraphField/GraphField';
 import './GraphPanel.css';
 
-const GraphPanel = ({ data }) => {
+const GraphPanel = ({ data, viewMode = 'graph', bridgePairs = [], onModeChange }) => {
   const graphFieldRef = useRef(null);
   const historyStepRef = useRef(0);
 
@@ -12,18 +12,22 @@ const GraphPanel = ({ data }) => {
   const [hiddenNodeIds, setHiddenNodeIds] = useState([]);
   const [hideHistory, setHideHistory] = useState([]);
   const [expandedNodes, setExpandedNodes] = useState(new Set());
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchIndex, setSearchIndex] = useState(0);
+  const [searchMessage, setSearchMessage] = useState('');
 
   // ========== Построение карт узлов ==========
-  const { nodeOptions, childrenMap, nodeTypeMap } = useMemo(() => {
-    if (!data) return { nodeOptions: [], childrenMap: {}, nodeTypeMap: {} };
+  const { nodeOptions, childrenMap, nodeTypeMap, parentMap } = useMemo(() => {
+    if (!data) return { nodeOptions: [], childrenMap: {}, nodeTypeMap: {}, parentMap: {} };
 
     const nodesMap = new Map();
     const childrenMap = {};
     const nodeTypeMap = {};
+    const parentMap = {};
     const allSubjects = Object.keys(data);
 
     allSubjects.forEach((subject) => {
-      nodesMap.set(subject, { id: subject, label: subject, nodeType: 'discipline' });
+      nodesMap.set(subject, { id: subject, label: subject, searchLabel: subject, nodeType: 'discipline' });
       nodeTypeMap[subject] = 'discipline';
       childrenMap[subject] = [];
 
@@ -33,7 +37,7 @@ const GraphPanel = ({ data }) => {
 
       [...predecessors, ...successors].forEach((name) => {
         if (!nodesMap.has(name)) {
-          nodesMap.set(name, { id: name, label: name, nodeType: 'discipline' });
+          nodesMap.set(name, { id: name, label: name, searchLabel: name, nodeType: 'discipline' });
           nodeTypeMap[name] = 'discipline';
           if (!childrenMap[name]) childrenMap[name] = [];
         }
@@ -48,11 +52,13 @@ const GraphPanel = ({ data }) => {
         nodesMap.set(topicId, {
           id: topicId,
           label: `$${topicName} ($${subject})`,
+          searchLabel: topicName,
           nodeType: 'topic'
         });
         nodeTypeMap[topicId] = 'topic';
         childrenMap[subject].push(topicId);
         childrenMap[topicId] = [];
+        parentMap[topicId] = subject;
 
         const subtopics = Array.isArray(topic.subtopics) ? topic.subtopics : [];
         subtopics.forEach((subtopic) => {
@@ -61,10 +67,12 @@ const GraphPanel = ({ data }) => {
           nodesMap.set(subtopicId, {
             id: subtopicId,
             label: `$${subtopic} ($${subject})`,
+            searchLabel: subtopic,
             nodeType: 'subtopic'
           });
           nodeTypeMap[subtopicId] = 'subtopic';
           childrenMap[topicId].push(subtopicId);
+          parentMap[subtopicId] = topicId;
         });
       });
     });
@@ -72,16 +80,103 @@ const GraphPanel = ({ data }) => {
     return {
       nodeOptions: Array.from(nodesMap.values()).sort((a, b) => a.label.localeCompare(b.label, 'ru')),
       childrenMap,
-      nodeTypeMap
+      nodeTypeMap,
+      parentMap
     };
   }, [data]);
 
+  const buildSearchMatches = useCallback((query) => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return [];
+    }
+
+    return nodeOptions.filter((node) => (node.searchLabel || node.label).toLowerCase().includes(normalizedQuery));
+  }, [nodeOptions]);
+
+  const getSearchDisplayName = useCallback((node) => {
+    if (!node) return '';
+    return node.searchLabel || node.label || '';
+  }, []);
+
+  const expandAncestorsForMatches = useCallback((matches) => {
+    const nextExpanded = new Set();
+
+    matches.forEach((matchedNode) => {
+      if (matchedNode.nodeType === 'discipline') return;
+
+      let currentId = matchedNode.id;
+      while (parentMap[currentId]) {
+        currentId = parentMap[currentId];
+        nextExpanded.add(currentId);
+      }
+    });
+
+    if (nextExpanded.size > 0) {
+      setExpandedNodes((prev) => {
+        const next = new Set(prev);
+        nextExpanded.forEach((nodeId) => next.add(nodeId));
+        return next;
+      });
+    }
+  }, [parentMap]);
+
+  const handleSearch = useCallback((query) => {
+    const normalizedQuery = query.trim();
+
+    if (!normalizedQuery) {
+      setSearchResults([]);
+      setSearchIndex(0);
+      setSearchMessage('Введите подстроку для поиска.');
+      return;
+    }
+
+    const matches = buildSearchMatches(normalizedQuery);
+
+    if (!matches.length) {
+      setSearchResults([]);
+      setSearchIndex(0);
+      setSearchMessage(`Вершина по подстроке «${normalizedQuery}» не найдена.`);
+      return;
+    }
+
+    expandAncestorsForMatches(matches);
+    setSearchResults(matches.map((node) => node.id));
+    setSearchIndex(0);
+    setSearchMessage(
+      matches.length > 1
+        ? `Найдено ${matches.length} вершин. Показана 1 из ${matches.length}: ${getSearchDisplayName(matches[0])}`
+        : `Найдена вершина: ${getSearchDisplayName(matches[0])}`
+    );
+  }, [buildSearchMatches, expandAncestorsForMatches, getSearchDisplayName]);
+
+  const handleSearchNavigate = useCallback((direction) => {
+    if (searchResults.length <= 1) return;
+
+    setSearchIndex((prev) => {
+      const nextIndex = direction === 'prev'
+        ? (prev - 1 + searchResults.length) % searchResults.length
+        : (prev + 1) % searchResults.length;
+      const activeNode = nodeOptions.find((node) => node.id === searchResults[nextIndex]);
+
+      if (activeNode) {
+        setSearchMessage(`Найдено ${searchResults.length} вершин. Показана ${nextIndex + 1} из ${searchResults.length}: ${getSearchDisplayName(activeNode)}`);
+      }
+
+      return nextIndex;
+    });
+  }, [getSearchDisplayName, nodeOptions, searchResults]);
+
   // ========== Expand / Collapse ==========
   const handleToggleExpand = useCallback((nodeId) => {
+    const children = childrenMap[nodeId] || [];
+    if (children.length === 0) return;
+
+    const willExpand = !expandedNodes.has(nodeId);
+
     setExpandedNodes((prev) => {
       const next = new Set(prev);
-      const children = childrenMap[nodeId] || [];
-      if (children.length === 0) return prev;
 
       if (next.has(nodeId)) {
         const removeRecursive = (parentId) => {
@@ -95,7 +190,15 @@ const GraphPanel = ({ data }) => {
       }
       return next;
     });
-  }, [childrenMap]);
+
+    // При раскрытии — возвращаем скрытых прямых детей
+    if (willExpand) {
+      const childSet = new Set(children);
+      setHiddenNodeIds((prev) =>
+        prev.length === 0 ? prev : prev.filter((id) => !childSet.has(id))
+      );
+    }
+  }, [childrenMap, expandedNodes]);
 
   const handleExpandAll = useCallback(() => {
     const allParents = new Set();
@@ -105,11 +208,21 @@ const GraphPanel = ({ data }) => {
       }
     });
     setExpandedNodes(allParents);
+    setHiddenNodeIds([]);
   }, [childrenMap]);
 
   const handleCollapseAll = useCallback(() => {
     setExpandedNodes(new Set());
+    setHiddenNodeIds([]);
   }, []);
+
+  const handleSearchClear = useCallback(() => {
+    setSearchResults([]);
+    setSearchIndex(0);
+    setSearchMessage('');
+  }, []);
+
+  const currentSearchNodeId = searchResults.length > 0 ? searchResults[searchIndex] : null;
 
   // ========== Export ==========
   const handleExportPNG = () => {
@@ -164,26 +277,70 @@ const GraphPanel = ({ data }) => {
     return Array.from(cascadeNodeIds);
   }, [nodeOptions]);
 
+  // ========== Hide / Show selected ==========
+  // Скрывает то, что отходит от выделенных (сами выделенные узлы остаются видимыми)
+  const handleHideSelected = useCallback(() => {
+    if (selectedNodeIds.length === 0) return;
+    const selectedSet = new Set(selectedNodeIds);
+    const toHide = getCascadeNodeIds(selectedNodeIds).filter(
+      (id) => !selectedSet.has(id)
+    );
+    if (toHide.length === 0) return;
+    setHiddenNodeIds((prev) => Array.from(new Set([...prev, ...toHide])));
+  }, [selectedNodeIds, getCascadeNodeIds]);
+
+  // Показывает то, что было скрыто и отходит от выделенных узлов
+  const handleShowFromSelected = useCallback(() => {
+    if (selectedNodeIds.length === 0) return;
+    const cascade = new Set(getCascadeNodeIds(selectedNodeIds));
+    setHiddenNodeIds((prev) => prev.filter((id) => !cascade.has(id)));
+    setExpandedNodes((prev) => {
+      const next = new Set(prev);
+      cascade.forEach((id) => {
+        if (childrenMap[id] && childrenMap[id].length > 0) {
+          next.add(id);
+        }
+      });
+      return next;
+    });
+  }, [selectedNodeIds, getCascadeNodeIds, childrenMap]);
+
   if (!data) {
     return <div className="graph-panel-empty">Данные графа не загружены</div>;
   }
 
   return (
       <>
-        <GraphNavbar onExportPNG={handleExportPNG} />
+      <GraphNavbar onExportPNG={handleExportPNG} onModeChange={onModeChange} />
         <div className="graph-panel">
           <GraphAside
               onExpandAll={handleExpandAll}
               onCollapseAll={handleCollapseAll}
+              onHideSelected={handleHideSelected}
+              onShowFromSelected={handleShowFromSelected}
+              hasSelection={selectedNodeIds.length > 0}
+              onSearch={handleSearch}
+              onSearchClear={handleSearchClear}
+                onSearchPrev={() => handleSearchNavigate('prev')}
+                onSearchNext={() => handleSearchNavigate('next')}
+                hasSearchResults={searchResults.length > 0}
+                hasMultipleSearchResults={searchResults.length > 1}
+                searchResultIndex={searchResults.length > 0 ? searchIndex : 0}
+                searchResultCount={searchResults.length}
+              searchMessage={searchMessage}
           />
           <GraphField
               ref={graphFieldRef}
               data={data}
+          viewMode={viewMode}
+          bridgePairs={bridgePairs}
               selectedNodeIds={selectedNodeIds}
               hiddenNodeIds={hiddenNodeIds}
               expandedNodes={expandedNodes}
               childrenMap={childrenMap}
               nodeTypeMap={nodeTypeMap}
+                searchResults={searchResults}
+                currentSearchNodeId={currentSearchNodeId}
               onToggleExpand={handleToggleExpand}
               onToggleNodeSelection={handleToggleNodeSelection}
               onSelectionChange={handleSelectionChange}

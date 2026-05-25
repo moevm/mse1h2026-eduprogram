@@ -72,18 +72,6 @@ h2 {
   display: block;
 }
 
-.input-wrapper {
-  margin-bottom: 10px;
-}
-
-.input-wrapper:last-of-type {
-  margin-bottom: 15px;
-}
-
-.custom-button {
-  margin-bottom: 10px;
-}
-
 .register-text {
   margin-top: 0;
   color: #000;

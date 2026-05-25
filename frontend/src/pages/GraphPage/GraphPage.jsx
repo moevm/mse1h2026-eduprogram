@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import GraphPanel from "../../components/GraphPanel/GraphPanel";
-import { fetchGraphData } from '../../services/api/graph';
+import { fetchGraphBridges, fetchGraphData } from '../../services/api/graph';
 import "./GraphPage.css"
 
 const GraphPage = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [graphData, setGraphData] = useState(null);
+    const [viewMode, setViewMode] = useState('graph');
+    const [bridgePairs, setBridgePairs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -121,17 +123,10 @@ const GraphPage = () => {
     };
 
     useEffect(() => {
-        const loadGraphData = async () => {
-            const userId = Number(localStorage.getItem('userId'));
+    const loadGraphData = async () => {
             const params = new URLSearchParams(location.search);
             const folder = params.get('folder');
             const university = params.get('university');
-
-            if (!Number.isInteger(userId) || userId <= 0) {
-                setError('Пользователь не авторизован. Войдите заново.');
-                setLoading(false);
-                return;
-            }
 
             if (!folder) {
                 setError('Программа не выбрана. Откройте список программ на главной странице.');
@@ -139,8 +134,11 @@ const GraphPage = () => {
                 return;
             }
 
+            setViewMode('graph');
+            setBridgePairs([]);
+
             try {
-                const data = await fetchGraphData(userId, folder, university || undefined);
+                const data = await fetchGraphData(null, folder, university || undefined);
                 setGraphData(data);
                 setError('');
             } catch (err) {
@@ -154,6 +152,33 @@ const GraphPage = () => {
 
         loadGraphData();
     }, [location.search]);
+
+    useEffect(() => {
+        const loadBridgePairs = async () => {
+            if (viewMode !== 'bridges' || !graphData) {
+                return;
+            }
+
+            const userId = Number(localStorage.getItem('userId'));
+            const params = new URLSearchParams(location.search);
+            const folder = params.get('folder');
+            const university = params.get('university');
+
+            if (!Number.isInteger(userId) || userId <= 0 || !folder) {
+                return;
+            }
+
+            try {
+                const bridges = await fetchGraphBridges(userId, folder, university || undefined);
+                setBridgePairs(bridges);
+            } catch (err) {
+                console.error('Failed to fetch bridge pairs:', err);
+                setBridgePairs([]);
+            }
+        };
+
+        loadBridgePairs();
+    }, [viewMode, graphData, location.search]);
 
     if (loading) {
         return (
@@ -180,7 +205,12 @@ const GraphPage = () => {
 
     return (
         <main className="graph-page__main">
-            <GraphPanel data={graphData} />
+            <GraphPanel
+                data={graphData}
+                viewMode={viewMode}
+                bridgePairs={bridgePairs}
+                onModeChange={setViewMode}
+            />
         </main>
     );
 };

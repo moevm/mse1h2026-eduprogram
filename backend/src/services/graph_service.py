@@ -1,8 +1,12 @@
 from typing import Tuple, Dict, Any, Optional, List, Set
-from fastapi import status
+from fastapi import status, Response
+from fastapi.responses import JSONResponse
 from pathlib import Path
 import os
 import json
+from docx import Document
+from io import BytesIO
+import fitz
 import re
 from difflib import SequenceMatcher
 from src.dataBase.dataBaseController import DataBaseController
@@ -10,6 +14,7 @@ from src.dataBase.dataBaseStructs import ProgramReference
 from src.rdf.rdf_controller import RdfController
 from src.services.gigachat_service import GigachatService
 from src.utils.gigachat_matcher import GigachatMatcher
+from src.utils.graph import find_bridges
 
 
 class GraphService:
@@ -21,9 +26,173 @@ class GraphService:
         self.path_storage = Path(os.getenv('LOCAL_PATH_TO_STORAGE'))
         self.gigachat = GigachatMatcher(llm)
 
+        """Словарь, который преобразует название формата в его представление для api"""
+        self._availableExportFormats = {
+            "TriG": "x-trig",
+            "JSON-LD": "ld+json",
+            "Turtle": "x-turtle",
+            "RDF-XML": "rdf+xml",
+            "N-Triples": "n-triples"
+        }
+
+        self._fileExtensions = {
+            "TriG": "trig",
+            "JSON-LD": "jsonld",
+            "Turtle": "ttl",
+            "RDF-XML": "xml",
+            "N-Triples": "nt"
+        }
+
+    def get_available_export_formats(self) -> Tuple[int, Dict[str, Any]]:
+        return (
+            status.HTTP_200_OK,
+            {"available-export-formats": list(self._availableExportFormats.keys())}
+        )
+
+    def get_export_file(self, format: str, graphId: str, user_id: int = None) -> Response:
+        if not self.rdf:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "No rdf"}
+            )
+
+        if format not in self._availableExportFormats and format not in self._fileExtensions:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "Unknown format"}
+            )
+
+        if user_id is not None and not self._verify_graph_ownership(graphId, user_id):
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"responseMessage": "Access denied: graph does not belong to this user"}
+            )
+
+        exportFile = self.rdf.export_graph_as_file(graphId, self._availableExportFormats[format])
+        if not exportFile:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "Can't export file"}
+            )
+        return Response(
+            content=exportFile.getvalue(),
+            media_type=f"application/{self._availableExportFormats[format]}",
+            status_code=status.HTTP_200_OK,
+            headers={
+                "Content-Disposition": f"attachment; filename={graphId}.{self._fileExtensions[format]}"
+            }
+        )
+
+    def find_graph_bridges(self, graphId: str) -> Tuple[int, Dict[str, Any]]:
+        if not self.rdf:
+            return (
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"responseMessage": "Rdf error!"}
+            )
+        resultGraph = self.rdf.get_data_of_graph(graphId)
+        if not resultGraph or None in resultGraph.keys():
+            return (
+                status.HTTP_404_NOT_FOUND,
+                {"responseMessage": "Not found graph"}
+            )
+        graphDisciplines = {}
+        for programName, disciplines in resultGraph.items():
+            for discipline in disciplines.keys():
+                for previousDiscipline in disciplines[discipline]["previousDisciplines"]:
+                    if not discipline in graphDisciplines:
+                        graphDisciplines[discipline] = [previousDiscipline]
+                    else:
+                        graphDisciplines[discipline].append(previousDiscipline)
+
+                    if not previousDiscipline in graphDisciplines:
+                        graphDisciplines[previousDiscipline] = [discipline]
+                    else:
+                        graphDisciplines[previousDiscipline].append(discipline)
+
+        print(graphDisciplines)
+        return (
+            status.HTTP_200_OK,
+            {"bridges": find_bridges(graphDisciplines)}
+        )
+
+    def get_report_file(self, format: str, graphId: str, user_id: int = None) -> Response:
+        if not self.db and not self.db.isConnected:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "No db"}
+            )
+
+        result = self.db.findComparedGraphsByHash(graphId)
+        if not result:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "Error with graphId"}
+            )
+
+        graph_user_id = result[1]
+        if user_id is not None and graph_user_id != user_id:
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"responseMessage": "Access denied: report does not belong to this user"}
+            )
+
+        if format not in ("docx", "pdf"):
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "Unknown format"}
+            )
+
+        doc = Document()
+        recommendations = result[4]
+        for rec in recommendations:
+            doc.add_paragraph(rec)
+
+        reportFile = BytesIO()
+        doc.save(reportFile)
+        reportFile.seek(0)
+
+        if format == "pdf":
+            pdfDoc = fitz.open(stream=reportFile, filetype="docx")
+            pdfBytes = pdfDoc.convert_to_pdf()
+            pdfDoc.close()
+            reportFile = BytesIO(pdfBytes)
+
+        if not reportFile:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"responseMessage": "Can't export file"}
+            )
+        return Response(
+            content=reportFile.getvalue(),
+            media_type=f"application/{format}",
+            status_code=status.HTTP_200_OK,
+            headers={
+                "Content-Disposition": f"attachment; filename={graphId}.{format}"
+            }
+        )
+
     @staticmethod
-    def _resolve_university_and_program(path_to_program_folder: str,
-                                        university_name: Optional[str]) -> Tuple[str, str]:
+    def _verify_graph_ownership(graphId: str, user_id: int) -> bool:
+        """
+        Проверяет, принадлежит ли граф пользователю.
+        GraphId содержит user_id в формате: {университет_id_{user_id}}/{программа}
+        """
+        try:
+            if " id " in graphId:
+                parts = graphId.split("/")
+                if parts:
+                    first_part = parts[0]
+                    import re
+                    match = re.search(r"id\s+(\d+)", first_part)
+                    if match:
+                        extracted_user_id = int(match.group(1))
+                        return extracted_user_id == user_id
+            return True  
+        except Exception:
+            return False
+
+    @staticmethod
+    def _resolve_university_and_program(path_to_program_folder: str, university_name: Optional[str]) -> Tuple[str, str]:
         program_name = str(path_to_program_folder or "").strip()
         resolved_university = str(university_name or "").strip()
 
@@ -178,35 +347,42 @@ class GraphService:
         return index
 
     def _subtopic_similarity(self, left: str, right: str) -> float:
-        left_norm = self._normalize_text(left)
-        right_norm = self._normalize_text(right)
+       left_norm = self._normalize_text(left)
+       right_norm = self._normalize_text(right)
+        
+       LEFT_LIMIT = float(os.getenv('LEFT_LIMIT', '0.6'))
+       RIGHT_LIMIT = float(os.getenv('RIGHT_LIMIT', '0.4'))
+       USE_LLM = int(os.getenv('USE_LLM', '0'))
+        
+       if not left_norm or not right_norm:
+           return 0.0
+       if left_norm == right_norm:
+           return 1.0
+       if left_norm in right_norm or right_norm in left_norm:
+           return 0.9
 
-        if not left_norm or not right_norm:
-            return 0.0
-        if left_norm == right_norm:
-            return 1.0
-        if left_norm in right_norm or right_norm in left_norm:
-            return 0.9
+       left_tokens = set(left_norm.split())
+       right_tokens = set(right_norm.split())
+       if left_tokens and right_tokens:
+           token_score = len(left_tokens & right_tokens) / max(1, min(len(left_tokens), len(right_tokens)))
+           if token_score >= 0.5:
+               return max(0.75, token_score)
 
-        left_tokens = set(left_norm.split())
-        right_tokens = set(right_norm.split())
-        if left_tokens and right_tokens:
-            token_score = len(left_tokens & right_tokens) / max(1, min(len(left_tokens), len(right_tokens)))
-            if token_score >= 0.5:
-                return max(0.75, token_score)
+       sequence_score = SequenceMatcher(None, left_norm, right_norm).ratio()
 
-        sequence_score = SequenceMatcher(None, left_norm, right_norm).ratio()
-    
-        if sequence_score < 0.75 and sequence_score >= 0.3 and self.gigachat:
-            try:
-                return 0.0
-                llm_result = self.gigachat.check_subtopic_similarity(left, right)
-                if llm_result:
-                    return 0.9
-            except Exception as e:
-                print(f"LLM check failed for '{left}' vs '{right}': {e}")
-    
-        return sequence_score
+       if (sequence_score < LEFT_LIMIT and 
+           sequence_score >= RIGHT_LIMIT and 
+           self.gigachat and 
+           USE_LLM == 1):
+           try:
+               llm_result = self.gigachat.check_subtopic_similarity(left, right)
+               print(f"LLM check call for '{left}' vs '{right}': '{llm_result}'")
+               if llm_result:
+                   return 0.9
+           except Exception as e:
+               print(f"LLM check failed for '{left}' vs '{right}': {e}")
+
+       return sequence_score
 
     def _best_subtopic_overlap(self, target_subtopic: str, compare_programs: List[Dict[str, Any]]) -> int:
         if not compare_programs:
@@ -229,10 +405,10 @@ class GraphService:
         return int(round((matched_programs / len(compare_programs)) * 100))
 
     def _find_missing_subtopics(
-                            self, 
-                            target_program: Dict[str, Any], 
-                            compare_payloads: List[Dict[str, Any]],
-                            threshold: int = 70
+            self,
+            target_program: Dict[str, Any],
+            compare_payloads: List[Dict[str, Any]],
+            threshold: int = 70
     ) -> List[Tuple[str, str, int]]:
         """
         Находит подтемы из сравниваемых программ, отсутствующие в целевой.
@@ -242,15 +418,15 @@ class GraphService:
         target_all_subtopics: Set[str] = set()
         for subtopics in target_index.values():
             target_all_subtopics.update(subtopics)
-    
+
         from collections import Counter
-    
-        foreign_subtopic_counts: Dict[str, Tuple[int, str]] = {}  # subtopic -> (count, discipline)
-    
+
+        foreign_subtopic_counts: Dict[str, List[Any]] = {} 
+
         for compare_program in compare_payloads:
             program_name = next(iter(compare_program.keys()), "")
             compare_index = self._extract_subtopics_index(compare_program)
-        
+
             for discipline_name, subtopics in compare_index.items():
                 for candidate in subtopics:
                     found_in_target = False
@@ -258,22 +434,22 @@ class GraphService:
                         if self._subtopic_similarity(candidate, target_subtopic) >= 0.75:
                             found_in_target = True
                             break
-                
+
                     if not found_in_target:
                         if candidate not in foreign_subtopic_counts:
                             foreign_subtopic_counts[candidate] = [0, discipline_name]
                         foreign_subtopic_counts[candidate][0] += 1
-    
+
         total_programs = len(compare_payloads)
-    
+
         missing: List[Tuple[str, str, int]] = []
         for subtopic, (count, discipline) in foreign_subtopic_counts.items():
             overlap_percent = int(round((count / total_programs) * 100))
             if overlap_percent >= threshold:
                 missing.append((subtopic, discipline, overlap_percent))
-    
+
         missing.sort(key=lambda x: x[2], reverse=True)
-    
+
         return missing
 
     def compare_graphs(self, user_id: int, university_name: str, program_name: str,
@@ -282,6 +458,11 @@ class GraphService:
             return (
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
                 {"responseMessage": "RDF repository is not available"}
+            )
+        if not self.db:
+            return (
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"responseMessage": "DB is not available"}
             )
         target_program = self.rdf.get_data_of_university_and_program(university_name, program_name, user_id)
         target_program = self._normalize_program_structure(target_program)
@@ -344,17 +525,36 @@ class GraphService:
         missing_subtopics = self._find_missing_subtopics(target_program, compare_payloads, threshold=70)
         for subtopic_name, discipline_name, overlap_percent in missing_subtopics:
             recommendations.append(
-            f"Учебная единица '{subtopic_name}' (встречается в {overlap_percent}% "
-            f"сравниваемых программ, дисциплина '{discipline_name}') отсутствует "
-            f"в целевой программе — рекомендуется добавить"
-        )
+                f"Учебная единица '{subtopic_name}' (встречается в {overlap_percent}% "
+                f"сравниваемых программ, дисциплина '{discipline_name}') отсутствует "
+                f"в целевой программе — рекомендуется добавить"
+            )
 
         if not recommendations:
             recommendations.append("Сравнение выполнено, явных расхождений не найдено")
 
+        graphID = self.rdf.add_program(university_name, {target_program_name: formatted_disciplines}, user_id, True, True)
+        if not graphID:
+            return (
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"responseMessage": "Error in add program to rdf"}
+            )
+
+        comparedProgramsStr = []
+        for program in compare_programs:
+            comparedProgramsStr.append(f"{program.university_name}/{program.program_name}")
+        resultAdd = self.db.addComparedGraph(graphID, user_id, f"{university_name}/{program_name}",
+                                             comparedProgramsStr, recommendations)
+        if not resultAdd:
+            return (
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"responseMessage": "Error in save program to db"}
+            )
+
         return (
             status.HTTP_200_OK,
             {
+                "graphId": graphID,
                 target_program_name: formatted_disciplines,
                 "Recomendations": recommendations,
             }

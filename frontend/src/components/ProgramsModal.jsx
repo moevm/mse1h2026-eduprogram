@@ -1,49 +1,46 @@
+import Modal from './UI/Modal/Modal';
+import Button from './UI/Button/Button';
 import './ProgramsModal.css';
-import Button from '../components/Button/Button';
 
 const ProgramsModal = ({ isOpen, onClose, programs, onShowGraph }) => {
-  if (!isOpen) return null;
-
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h3 className="title-window">Образовательные программы</h3>
-        
-        {programs.length === 0 ? (
-          <p className="text-program">Нет данных</p>
-        ) : (
-          <ul>
-            {programs.map((program, idx) => (
-              <li key={idx}>
-                <span className="text-program">{program.displayName || program}</span>
-                <Button
-                type="button"
-                color="#000000"
-                onClick={() => onShowGraph(program)}
-                width="160px"
-                height="43px"
-                absolute={false}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Образовательные программы"
+      showClose
+      size="small"
+    >
+      {programs.length === 0 ? (
+        <p className="text-program">Нет данных</p>
+      ) : (
+        <ul className="programs-modal-list">
+          {programs.map((program, idx) => {
+            const label = program.displayName || program;
+            return (
+              <li key={idx} className="programs-modal-item">
+                <span
+                  className="text-program programs-modal-item__label"
+                  title={label}
                 >
-                  <p className="text-program">Показать граф программы</p>
+                  {label}
+                </span>
+                <Button
+                  type="button"
+                  color="#000000"
+                  onClick={() => onShowGraph(program)}
+                  width="160px"
+                  height="43px"
+                  absolute={false}
+                >
+                  <span className="text-program">Показать граф программы</span>
                 </Button>
               </li>
-            ))}
-          </ul>
-        )}
-        
-        <Button
-        className="close-button"
-        type="button"
-        color="#2058c7"
-        onClick={onClose}
-        width="260px"
-        height="43px"
-        >
-          <p className="text-program">Закрыть</p>
-        </Button>
-      </div>
-
-    </div>
+            );
+          })}
+        </ul>
+      )}
+    </Modal>
   );
 };
 

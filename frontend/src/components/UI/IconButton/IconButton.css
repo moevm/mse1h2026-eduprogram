@@ -1,0 +1,54 @@
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: #dedede;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #1d1d1f;
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
+}
+
+.icon-button:hover:not(:disabled) {
+  background: #c0c0c0;
+}
+
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.icon-button--icon {
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+}
+
+.icon-button--text {
+  padding: 8px 14px;
+}
+
+.icon-button__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.icon-button__icon img,
+.icon-button__icon svg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.icon-button__label {
+  white-space: nowrap;
+}

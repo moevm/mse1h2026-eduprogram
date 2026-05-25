@@ -1,11 +1,10 @@
 .tree-editor-container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 24px;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  font-family: Roboto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: "Inter", sans-serif;
+  font-size: 16px;
+  font-weight: 300;
 }
 
 .header h1 {
@@ -36,6 +35,9 @@
 
 .tree-node {
   margin: 8px 0;
+  font-family: "Inter", sans-serif;
+  font-size: 16px;
+  font-weight: 300;
 }
 
 .node-content {
@@ -48,36 +50,15 @@
   border-radius: 8px;
 }
 
+.node-content .input-wrapper {
+  flex: 1;
+  margin-bottom: 0;
+  min-width: 200px;
+}
+
 .node-content:hover {
   background: #f2f2f5;
   border-color: #d9d9e0;
-}
-
-.toggle-btn {
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #5e5e66;
-  padding: 0;
-}
-
-
-
-.node-input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #d9d9e0;
-  border-radius: 6px;
-  font-size: 14px;
-  background: white;
-  outline: none;
-  transition: border 0.1s;
-  min-width: 200px;
 }
 
 .node-input:focus {
@@ -87,39 +68,10 @@
 
 .type-badge {
   font-size: 12px;
-  padding: 4px 8px;
+  padding: 8px 16px;
   background: #e9e9ed;
-  border-radius: 20px;
+  border-radius: 16px;
   color: #3a3a44;
-}
-
-.action-btn {
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-.add-btn {
-  background: #e9e9ed;
-  color: #1d1d1f;
-}
-
-
-.delete-btn {
-  background: transparent;
-  color: #ff3b30;
-  opacity: 0.7;
-}
-
-.delete-btn:hover {
-  background: #ffeeed;
-  opacity: 1;
 }
 
 .children-container {
@@ -137,34 +89,8 @@
   flex-wrap: wrap;
 }
 
-.primary-btn,
-.secondary-btn {
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  border: none;
-  transition: background 0.1s;
-}
-
-.primary-btn {
-  background: #007aff;
-  color: white;
-  font-weight: 500;
-}
-
-.primary-btn:hover {
-  background: #005fc7;
-}
-
-.secondary-btn {
-  background: white;
-  color: #1d1d1f;
-  border: 1px solid #d9d9e0;
-}
-
-.secondary-btn:hover {
-  background: #f5f5f7;
+.align-end {
+  margin-left: auto;
 }
 
 .json-output {
@@ -197,23 +123,11 @@
 .prev-input {
   display: flex;
   gap: 6px;
-  margin-bottom: 6px;
+  align-items: center;
 }
 
 .prev-input input {
-  padding: 5px 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 13px;
-}
-
-.prev-input button {
-  padding: 4px 10px;
-  border: none;
-  border-radius: 4px;
-  background: #4caf50;
-  color: white;
-  cursor: pointer;
+  width: 300px;
 }
 
 .prev-list {
@@ -241,13 +155,4 @@
 
 .submit-block {
   margin-top: 20px;
-}
-
-.submit-btn {
-  padding: 8px 14px;
-  border: none;
-  border-radius: 4px;
-  background: #1976d2;
-  color: white;
-  cursor: pointer;
 }

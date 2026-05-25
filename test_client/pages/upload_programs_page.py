@@ -8,12 +8,14 @@ from config.links import Links
 
 
 class UploadProgramsPage(BasePage):
-    PAGE_URL = Links.UPLOAD_PROGRAMS
+    PAGE_URL = Links.MAIN
 
     PROGRAM_NAME_INPUT = ("xpath", "//input[@placeholder='Название программы']")
     SELECT_UNIVERSITIES = ("xpath", "//select")
     FILE_INPUT = ("xpath", "//input[@type='file']")
     SEND_BUTTON = ("xpath", "//button[child::span[text()='Отправить']]")
+
+    NOTIFICATION = ("xpath", "//span[text()='Программа успешно загружена']")
 
     def enter_program_name(self, program_name: str):
         PROGRAM_NAME_INPUT_EL = self.wait.until(EC.visibility_of_element_located(self.PROGRAM_NAME_INPUT))
@@ -45,3 +47,6 @@ class UploadProgramsPage(BasePage):
         alert = self.driver.switch_to.alert
         alert.accept()
         return text
+    
+    def is_notification_visible(self):
+        NOTIFICATION_EL = self.wait.until(EC.presence_of_element_located(self.NOTIFICATION))

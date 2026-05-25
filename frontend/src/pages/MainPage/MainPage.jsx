@@ -2,12 +2,18 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProgramsModal from '../../components/ProgramsModal';
 import CompareProgramsModal from '../../components/CompareProgramsModal';
-import Button from '../../components/Button/Button';
+import HistoryModal from '../../components/HistoryModal';
+import Button from '../../components/UI/Button/Button';
 import Navbar from "../../components/Navbar/Navbar";
+import TreeEditor from '../../components/TreeEditor';
+import UploadProgram from '../../components/UploadProgram';
+import { useNotification } from '../../components/UI/Notification/Notification';
 import "./MainPage.css"
+import { fetchWithAuth } from '../../services/api/httpClient';
 
 const MainPage = () => {
   const navigate = useNavigate();
+  const notify = useNotification();
   const [isOpen, setIsOpen] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const [programs, setPrograms] = useState([]);
@@ -16,7 +22,15 @@ const MainPage = () => {
   const [compareError, setCompareError] = useState('');
   const [selectedMainProgramId, setSelectedMainProgramId] = useState('');
   const [selectedCompareProgramIds, setSelectedCompareProgramIds] = useState([]);
-  const userId = Number(localStorage.getItem('userId'));
+
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyData, setHistoryData] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+
+
 
   const domain = process.env.REACT_APP_API_URL_GET_PROGRAMMS || process.env.REACT_APP_API_URL || 'localhost:8000';
   const API_BASE_URL = domain.startsWith('http') ? domain : `http://${domain}`;
@@ -77,21 +91,17 @@ const MainPage = () => {
   };
 
   const loadPrograms = async () => {
-    const response = await fetch(`${API_BASE_URL}/get-programs?userId=${userId}`);
+    const response = await fetchWithAuth(`${API_BASE_URL}/get-programs`);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-
+    
     const data = await response.json();
+    
     return normalizePrograms(data.programs || []);
   };
 
   const fetchPrograms = async () => {
-    if (!Number.isInteger(userId) || userId <= 0) {
-      alert('Пользователь не авторизован. Войдите заново.');
-      return;
-    }
-
     setLoading(true);
     try {
       const normalizedPrograms = await loadPrograms();
@@ -100,7 +110,7 @@ const MainPage = () => {
       setIsOpen(true);
     } catch (error) {
       console.error('Ошибка:', error);
-      alert('Не удалось получить программы');
+      notify('Не удалось получить программы', { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -128,11 +138,6 @@ const MainPage = () => {
   };
 
   const handleComparePrograms = async () => {
-    if (!Number.isInteger(userId) || userId <= 0) {
-      alert('Пользователь не авторизован. Войдите заново.');
-      return;
-    }
-
     setCompareLoading(true);
     setCompareError('');
 
@@ -197,14 +202,14 @@ const MainPage = () => {
       return;
     }
 
+    setCompareLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/compare_graphs`, {
+      const response = await fetchWithAuth(`${API_BASE_URL}/compare_graphs`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: String(userId),
           university_name: selectedMainProgram.universityName,
           program_name: selectedMainProgram.programName,
           compare_programs: comparePrograms.map((program) => ({
@@ -217,9 +222,11 @@ const MainPage = () => {
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
-
       const data = await response.json();
-      localStorage.setItem('compareData', JSON.stringify(data));
+      localStorage.setItem('graph_id', data.graphId)
+      delete data.graphId;
+      const jsonData = JSON.stringify(data);
+      localStorage.setItem('compareData', jsonData);
       setIsCompareOpen(false);
       setCompareError('');
 
@@ -227,54 +234,132 @@ const MainPage = () => {
     } catch (error) {
       console.error('Ошибка сравнения программ:', error);
       setCompareError('Не удалось отправить запрос на сравнение программ');
+    } finally {
+      setCompareLoading(false);
     }
   };
 
+  const fetchShowHistory = async () => {
+    setHistoryLoading(true);
+
+    try {
+      const response = await fetchWithAuth(`${API_BASE_URL}/get-history`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      const comparedPrograms = data["compared-programs"] || [];
+
+      setHistoryData(comparedPrograms);
+      setIsHistoryOpen(true);
+
+    } catch (error) {
+      console.error('Ошибка загрузки истории:', error);
+      notify('Не удалось загрузить историю сравнений', { type: 'error' });
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+
+
+  const fetchHistoryGraph = async (hash) => {
+    try {
+      const response = await fetchWithAuth(`${API_BASE_URL}/get-history-graph?hash=${hash}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      localStorage.setItem('compareData', JSON.stringify(data));
+
+      navigate('/compare');
+
+      return data;
+    } catch (error) {
+      console.error('Ошибка загрузки результата сравнения:', error);
+      notify('Не удалось загрузить результат сравнения', { type: 'error' });
+      throw error;
+    }
+  };
+
+
+  // Обработчик выбора элемента из истории
+  const handleViewHistoryResult = async (historyItem) => {
+    // Закрываем модальное окно истории
+    setIsHistoryOpen(false);
+
+    // Загружаем данные графа по hash
+    await fetchHistoryGraph(historyItem.hash);
+  };
+  
   const handleAddProgram = () => {
-    navigate('/work_program');
+    setIsEditorOpen(true);
   };
 
   const handleManualAdd = () => {
-    navigate('/upload_programs');
+    setIsUploadOpen(true);
   };
 
   return (
     <>
-      <Navbar/>
-      <main className="main-page-center">
-        <Button
-          onClick={fetchPrograms}
-          width="260px"
-          height="43px"
-          disabled={loading}
-        >
-          {loading ? 'Загрузка...' : 'Выберите рабочую программу'}
-        </Button>
-        <Button
-          onClick={handleAddProgram}
-          width="260px"
-          height="43px"
-        >
-          Добавить программу
-        </Button>
-        <Button
-            onClick={handleManualAdd}
-            width="260px"
-            height="43px"
-        >
-          Добавить свою программу
-        </Button>
-        <Button
-            onClick={handleComparePrograms}
-            width="260px"
-            height="43px"
-            disabled={compareLoading}
-        >
-          {compareLoading ? 'Загрузка...' : 'Сравнить программы'}
-        </Button>
+
+      <Navbar showAuthButtons={false} showLogoutButton={true} />
+      <main className="main-page">
+        <header className="main-hero">
+          <h1 className="main-title">Образовательные программы</h1>
+        </header>
+
+        <div className="main-grid ">
+          <section className="main-card">
+            <div className="main-card-header">
+              <h2 className="main-card-title">Сравнение</h2>
+              <span className="main-card-hint">Сопоставьте две и более программ</span>
+            </div>
+            <div className="main-card-actions">
+              <Button onClick={handleComparePrograms} loading={compareLoading}>
+                Сравнить программы
+              </Button>
+              <Button onClick={fetchShowHistory} disabled={compareLoading}>
+                {compareLoading ? 'Загрузка...' : 'История сравнения'}
+              </Button>
+            </div>
+          </section>
+
+          <section className="main-card">
+            <div className="main-card-header">
+              <h2 className="main-card-title">Добавление</h2>
+              <span className="main-card-hint">Создайте или загрузите программу</span>
+            </div>
+            <div className="main-card-actions">
+              <Button onClick={handleAddProgram} loading={isEditorOpen}>
+                Добавить программу
+              </Button>
+              <Button onClick={handleManualAdd} loading={isUploadOpen}>
+                Добавить свою программу
+              </Button>
+            </div>
+          </section>
+        </div>
+
+        <section className="main-card">
+            <div className="main-card-header">
+              <h2 className="main-card-title">Просмотр</h2>
+              <span className="main-card-hint">Ваши программы и история</span>
+            </div>
+            <div className="main-card-actions">
+              <Button onClick={fetchPrograms} disabled={loading}>
+                {loading ? 'Загрузка...' : 'Выберите рабочую программу'}
+              </Button>
+            </div>
+          </section>
       </main>
 
-      <ProgramsModal 
+      <ProgramsModal
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
         programs={programs}
@@ -292,9 +377,23 @@ const MainPage = () => {
         onCompare={handleCompareSubmit}
         error={compareError}
         canCompare={compareCandidates.length > 0}
+        loading={compareLoading}
+      />
+      <HistoryModal
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        historyData={historyData}
+        onViewResult={handleViewHistoryResult}
       />
 
-
+      <TreeEditor
+        isOpen={isEditorOpen}
+        onClose={() => setIsEditorOpen(false)}
+      />
+      <UploadProgram
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+      />
     </>
   );
 };

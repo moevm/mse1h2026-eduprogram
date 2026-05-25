@@ -73,3 +73,150 @@
 .graph-aside__controls .custom-button {
     width: 100% !important;
 }
+
+.formats-panel {
+    height: 45px;
+    min-width: 0;
+    width: auto;
+    padding: 8px 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    background-color: #fafafa;
+    border: 1px solid #d5d5d5;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.formats-panel:hover {
+    border-color: #000000;
+}
+
+.formats-panel:focus {
+    outline: none;
+    border-color: #000000;
+}
+
+.report-download-section {
+    display: flex;
+    gap: 10px;
+}
+
+.report-download-section .custom-button {
+    flex: 1 1 0;
+    min-width: 0;
+    width: 100%;
+}
+
+.graph-aside__divider {
+    height: 1px;
+    background: #d5d5d5;
+    margin: 4px 0;
+}
+
+.graph-aside__search {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid #cfcfcf;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+}
+
+.graph-aside__search-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #111111;
+}
+
+.graph-aside__search-input {
+    width: 100%;
+    box-sizing: border-box;
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid #d5d5d5;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: inherit;
+    background: #fafafa;
+    color: #111111;
+}
+
+.graph-aside__search-input:focus {
+    outline: none;
+    border-color: #000000;
+    background: #ffffff;
+}
+
+.graph-aside__search-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.graph-aside__search-actions .custom-button {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.graph-aside__search-message {
+    font-size: 12px;
+    line-height: 1.4;
+    color: #2c2c2c;
+    background: #fafafa;
+    border: 1px solid #d8d8d8;
+    border-radius: 8px;
+    padding: 8px 10px;
+    min-height: 56px;
+    max-height: 56px; /* фиксированная высота чтобы не сдвигать навигацию */
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    overflow-y: auto; /* скроллим при переполнении */
+    word-break: break-word;
+}
+
+.graph-aside__search-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+}
+
+.graph-aside__search-nav .custom-button {
+    flex: 0 0 44px;
+    width: 44px;
+    min-width: 44px;
+    padding-inline: 0;
+}
+
+.graph-aside__search-counter {
+    flex: 1 1 auto;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1f1f1f;
+    background: #f5f5f5;
+    border: 1px solid #d8d8d8;
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+
+.graph-aside .custom-button {
+    width: 100%;
+}
+
+.graph-download-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.graph-download-row .formats-panel {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.graph-download-row .icon-button {
+    flex-shrink: 0;
+}

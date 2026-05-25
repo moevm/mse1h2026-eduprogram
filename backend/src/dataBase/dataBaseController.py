@@ -324,3 +324,30 @@ class DataBaseController:
 
         result = self.__findOperation(request, args)
         return result
+
+    def add_refresh_token(self, user_id: int, token_hash: str, expires_at) -> bool:
+        """Сохранение хэша refresh-токена в БД для отслеживания отзыва."""
+        request = "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (%s, %s, %s)"
+        args = (user_id, token_hash, expires_at)
+        return self.__insertOperation(request, args)
+
+    def is_refresh_token_valid(self, user_id: int, token_hash: str) -> bool:
+        """Проверка, не был ли refresh-токен отозван и не истёк ли."""
+        request = """SELECT 1 FROM refresh_tokens 
+                     WHERE user_id = %s AND token_hash = %s AND is_revoked = FALSE AND expires_at > CURRENT_TIMESTAMP
+                     LIMIT 1"""
+        args = (user_id, token_hash)
+        result = self.__findOperation(request, args)
+        return len(result) > 0
+
+    def revoke_refresh_token(self, token_hash: str) -> bool:
+        """Отзыв refresh-токена по его хэшу."""
+        request = "UPDATE refresh_tokens SET is_revoked = TRUE WHERE token_hash = %s"
+        args = (token_hash,)
+        return self.__insertOperation(request, args)
+
+    def revoke_all_user_refresh_tokens(self, user_id: int) -> bool:
+        """Отзыв всех refresh-токенов пользователя."""
+        request = "UPDATE refresh_tokens SET is_revoked = TRUE WHERE user_id = %s"
+        args = (user_id,)
+        return self.__insertOperation(request, args)

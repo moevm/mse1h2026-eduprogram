@@ -1,5 +1,32 @@
+import { fetchWithAuth } from './httpClient';
+
 const domain = process.env.REACT_APP_API_URL || 'localhost:8000';
 const API_BASE_URL = domain.startsWith('http') ? domain : `http://${domain}`;
+
+const normalizeGraphIdComponent = (value) => {
+  const specialSymbols = ['~', '.', '-', '!', '$', '&', "'", '(', ')', '*', '+', ',', ';', '=', '?', '#', '@', '%', '№', '>', '<'];
+
+  let result = String(value || '').trim();
+  result = result.replace(/ /g, '_');
+  result = result.replace(/\//g, '_');
+  result = result.replace(/,/g, '_');
+
+  specialSymbols.forEach((symbol) => {
+    result = result.replaceAll(symbol, `\\${symbol}`);
+  });
+
+  result = result.replaceAll('«', '');
+  result = result.replaceAll('»', '');
+
+  return result;
+};
+
+export const buildGraphId = (userId, programFolder, universityName) => {
+  const resolvedUniversity = normalizeGraphIdComponent(`${universityName || 'frontend'} id ${userId}`);
+  const resolvedProgram = normalizeGraphIdComponent(programFolder);
+
+  return `${resolvedUniversity}/${resolvedProgram}`;
+};
 
 const normalizeDisciplines = (disciplinesRaw) => {
   if (Array.isArray(disciplinesRaw)) {
@@ -109,7 +136,6 @@ const buildGraphDataFromProgram = (programJson) => {
 
 export const fetchGraphData = async (userId, programFolder, universityName) => {
   const params = new URLSearchParams({
-    userId: String(userId),
     pathToProgramFolder: programFolder,
   });
 
@@ -117,11 +143,28 @@ export const fetchGraphData = async (userId, programFolder, universityName) => {
     params.set('universityName', universityName);
   }
 
-  const response = await fetch(`${API_BASE_URL}/show-graph?${params.toString()}`);
+  const response = await fetchWithAuth(`${API_BASE_URL}/show-graph?${params.toString()}`);
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
   }
 
   const rawData = await response.json();
   return buildGraphDataFromProgram(rawData);
+};
+
+export const fetchGraphBridges = async (userId, programFolder, universityName) => {
+  const graphId = buildGraphId(userId, programFolder, universityName);
+  return fetchGraphBridgesById(graphId);
+};
+
+export const fetchGraphBridgesById = async (graphId) => {
+  const params = new URLSearchParams({ graphId });
+
+  const response = await fetch(`${API_BASE_URL}/find-graph-bridges?${params.toString()}`);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  const rawData = await response.json();
+  return Array.isArray(rawData?.bridges) ? rawData.bridges : [];
 };

@@ -1,4 +1,6 @@
 
+import { fetchWithAuth } from '../../services/api/httpClient';
+
 export const generateId = () => Date.now() + '-' + Math.random().toString(36).substr(2, 9);
 
 export const getChildType = (parentType) => {
@@ -29,10 +31,12 @@ export const getPlaceholder = (type) => {
 };
 
 
-export const convertToBackendFormat = (programName, disciplines) => {
+export const convertToBackendFormat = (programName, universityName, disciplines = []) => {
   const result = {};
 
-  result[programName] = disciplines.map((discipline) => {
+  const safeDisciplines = Array.isArray(disciplines) ? disciplines : [];
+
+  result[programName] = safeDisciplines.map((discipline) => {
     const topics = discipline.children.map((topic) => {
       const topicObj = {};
       topicObj[topic.name] = topic.children.map((sub) => sub.name);
@@ -47,29 +51,27 @@ export const convertToBackendFormat = (programName, disciplines) => {
     };
   });
 
+  result['nameUniversity'] = universityName;
+
   return result;
 };
 
 const domain = process.env.REACT_APP_API_URL_ADD_PROGRAM || process.env.REACT_APP_API_URL || 'localhost:8000';
 const API_BASE_URL = domain.startsWith('http') ? domain : `http://${domain}`;
 
-export const submitProgram = async (programName, disciplines) => {
-  const userId = Number(localStorage.getItem('userId'));
-  const data = {
-    ...convertToBackendFormat(programName, disciplines),
-    idUser: userId,
-  };
+export const submitProgram = async (programName, universityName, disciplines) => {
+  const data = convertToBackendFormat(programName, universityName, disciplines);
 
   if (!programName || !programName.trim()) {
     return { success: false, error: 'Укажите название образовательной программы' };
   }
 
-  if (!Number.isInteger(userId) || userId <= 0) {
-    return { success: false, error: 'Пользователь не авторизован. Войдите заново.' };
+  if (!universityName || !universityName.trim()) {
+    return { success: false, error: 'Укажите название университета' };
   }
 
   try {
-    const res = await fetch(`${API_BASE_URL}/add-program`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/add-program`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)

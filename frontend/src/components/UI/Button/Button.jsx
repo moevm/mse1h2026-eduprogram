@@ -10,7 +10,8 @@ function Button({
   width,
   height,
   className = '',
-  disabled = false
+  disabled = false,
+  loading = false
 }) {
   const buttonStyle = {
     backgroundColor: color,
@@ -27,9 +28,9 @@ function Button({
       style={buttonStyle}
       onClick={onClick}
       type={type}
-      disabled={disabled}
+      disabled={disabled || loading}
     >
-      <span>{children}</span>
+      <span>{loading ? 'Загрузка...' : children}</span>
     </button>
   );
 }

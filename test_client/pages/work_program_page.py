@@ -8,7 +8,7 @@ from config.links import Links
 
 
 class WorkProgramPage(BasePage):
-    PAGE_URL = Links.WORK_PROGRAM
+    PAGE_URL = Links.MAIN
 
     PROGRAM_INPUT = ("xpath", "//input[@class='program-input']")
     ADD_DISCIPLINE_BUTTON = ("xpath", "//button[text()='Добавить дисциплину']")
