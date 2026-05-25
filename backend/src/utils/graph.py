@@ -21,7 +21,10 @@ def find_bridges(graph: Dict[str, list]):
         usedNodesDFS2[node] = False
 
     graphAfterDFS = graph.copy()
-    dfs(list(graphAfterDFS.keys())[0], graphAfterDFS, usedNodesDFS1)
+    nodes = list(graphAfterDFS.keys())
+    if len(nodes) == 0:
+        return []
+    dfs(nodes[0], graphAfterDFS, usedNodesDFS1)
     bridges = []
     groups = []
     while True:
