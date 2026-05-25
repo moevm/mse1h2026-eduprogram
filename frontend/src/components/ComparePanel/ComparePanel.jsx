@@ -1,11 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import CompareNavbar from './CompareNavbar/CompareNavbar';
 import CompareAside from './CompareAside/CompareAside';
 import CompareField from './CompareField/CompareField';
+import { fetchGraphBridgesById } from '../../services/api/graph';
 import './ComparePanel.css';
 
 const ComparePanel = ({ data }) => {
     const [activeSection, setActiveSection] = useState('graph');
+    const [bridgePairs, setBridgePairs] = useState([]);
 
     const recommendations = Array.isArray(data?.Recomendations)
         ? data.Recomendations
@@ -135,6 +137,88 @@ const ComparePanel = ({ data }) => {
         return buildGraph();
     }, [data]);
 
+    const { bridgeNodes, bridgeEdges } = useMemo(() => {
+        if (!data) return { bridgeNodes: [], bridgeEdges: [] };
+
+        const nodesMap = new Map();
+        const edgesSet = new Set();
+        const edgesList = [];
+
+        Object.entries(data).forEach(([programName, disciplines]) => {
+            if (programName === 'Recomendations') return;
+
+            toEntriesArray(disciplines).forEach((disciplineObj) => {
+                Object.entries(disciplineObj).forEach(([disciplineName, disciplineData]) => {
+                    if (!nodesMap.has(disciplineName)) {
+                        nodesMap.set(disciplineName, {
+                            data: {
+                                id: disciplineName,
+                                label: disciplineName,
+                                color: '#999999',
+                                nodeType: 'discipline'
+                            }
+                        });
+                    }
+
+                    const prev = Array.isArray(disciplineData?.previousDisciplines)
+                        ? disciplineData.previousDisciplines
+                        : [];
+
+                    prev.forEach((prevName) => {
+                        if (!prevName) return;
+                        if (!nodesMap.has(prevName)) {
+                            nodesMap.set(prevName, {
+                                data: {
+                                    id: prevName,
+                                    label: prevName,
+                                    color: '#999999',
+                                    nodeType: 'discipline'
+                                }
+                            });
+                        }
+
+                        const key = `${prevName}->${disciplineName}`;
+                        if (!edgesSet.has(key)) {
+                            edgesSet.add(key);
+                            edgesList.push({
+                                data: { source: prevName, target: disciplineName }
+                            });
+                        }
+                    });
+                });
+            });
+        });
+
+        return {
+            bridgeNodes: Array.from(nodesMap.values()),
+            bridgeEdges: edgesList
+        };
+    }, [data]);
+
+    useEffect(() => {
+        if (activeSection !== 'bridges') return;
+
+        const graphId = localStorage.getItem('graph_id');
+        if (!graphId) {
+            setBridgePairs([]);
+            return;
+        }
+
+        let cancelled = false;
+        fetchGraphBridgesById(graphId)
+            .then((pairs) => {
+                if (!cancelled) setBridgePairs(pairs);
+            })
+            .catch((err) => {
+                console.error('Failed to fetch bridge pairs:', err);
+                if (!cancelled) setBridgePairs([]);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [activeSection]);
+
     if (!data) {
         return <div className="graph-panel-empty">Данные графа не загружены</div>;
     }
@@ -165,6 +249,13 @@ const ComparePanel = ({ data }) => {
                             )}
                         </article>
                     </div>
+                ) : activeSection === 'bridges' ? (
+                    <CompareField
+                        nodes={bridgeNodes}
+                        edges={bridgeEdges}
+                        viewMode="bridges"
+                        bridgePairs={bridgePairs}
+                    />
                 ) : (
                     <CompareField nodes={nodes} edges={edges} />
                 )}

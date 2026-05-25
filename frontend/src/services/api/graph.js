@@ -153,6 +153,10 @@ export const fetchGraphData = async (userId, programFolder, universityName) => {
 
 export const fetchGraphBridges = async (userId, programFolder, universityName) => {
   const graphId = buildGraphId(userId, programFolder, universityName);
+  return fetchGraphBridgesById(graphId);
+};
+
+export const fetchGraphBridgesById = async (graphId) => {
   const params = new URLSearchParams({ graphId });
 
   const response = await fetch(`${API_BASE_URL}/find-graph-bridges?${params.toString()}`);
