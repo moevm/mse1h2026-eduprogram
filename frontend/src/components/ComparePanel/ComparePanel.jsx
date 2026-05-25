@@ -6,6 +6,9 @@ import './ComparePanel.css';
 
 const ComparePanel = ({ data }) => {
     const [activeSection, setActiveSection] = useState('graph');
+    const [searchResults, setSearchResults] = useState([]);
+    const [searchIndex, setSearchIndex] = useState(0);
+    const [searchMessage, setSearchMessage] = useState('');
 
     const recommendations = Array.isArray(data?.Recomendations)
         ? data.Recomendations
@@ -49,6 +52,7 @@ const ComparePanel = ({ data }) => {
                 data: {
                     id: programName,
                     label: programName,
+                    searchLabel: programName,
                     color: '#cccccc'
                 }
             });
@@ -62,6 +66,7 @@ const ComparePanel = ({ data }) => {
                         data: {
                             id: disciplineId,
                             label: disciplineName,
+                            searchLabel: disciplineName,
                             color: '#999999'
                         }
                     });
@@ -83,6 +88,7 @@ const ComparePanel = ({ data }) => {
                                 data: {
                                     id: topicId,
                                     label: topicName,
+                                    searchLabel: topicName,
                                     color: '#666666'
                                 }
                             });
@@ -104,6 +110,7 @@ const ComparePanel = ({ data }) => {
                                         data: {
                                             id: subtopicId,
                                             label: `${subtopicName} (${overlap})`,
+                                            searchLabel: subtopicName,
                                             color: getColorByOverlap(overlap),
                                             overlap
                                         }
@@ -135,6 +142,60 @@ const ComparePanel = ({ data }) => {
         return buildGraph();
     }, [data]);
 
+    const handleSearch = (query) => {
+        const normalizedQuery = query.trim();
+
+        if (!normalizedQuery) {
+            setSearchResults([]);
+            setSearchIndex(0);
+            setSearchMessage('Введите подстроку для поиска.');
+            return;
+        }
+
+        const lowerQuery = normalizedQuery.toLowerCase();
+        const matchedNodes = nodes.filter((node) => (node.data?.searchLabel || node.data?.label || '').toLowerCase().includes(lowerQuery));
+
+        if (!matchedNodes.length) {
+            setSearchResults([]);
+            setSearchIndex(0);
+            setSearchMessage(`Вершина по подстроке «${normalizedQuery}» не найдена.`);
+            return;
+        }
+
+        setSearchResults(matchedNodes.map((node) => node.data.id));
+        setSearchIndex(0);
+        setSearchMessage(
+            matchedNodes.length > 1
+                ? `Найдено ${matchedNodes.length} вершин. Показана 1 из ${matchedNodes.length}: ${matchedNodes[0].data.label}`
+                : `Найдена вершина: ${matchedNodes[0].data.label}`
+        );
+    };
+
+    const handleSearchNavigate = (direction) => {
+        if (searchResults.length <= 1) return;
+
+        setSearchIndex((prev) => {
+            const nextIndex = direction === 'prev'
+                ? (prev - 1 + searchResults.length) % searchResults.length
+                : (prev + 1) % searchResults.length;
+            const activeNode = nodes.find((node) => node.data.id === searchResults[nextIndex]);
+
+            if (activeNode) {
+                setSearchMessage(`Найдено ${searchResults.length} вершин. Показана ${nextIndex + 1} из ${searchResults.length}: ${activeNode.data.label}`);
+            }
+
+            return nextIndex;
+        });
+    };
+
+    const handleSearchClear = () => {
+        setSearchResults([]);
+        setSearchIndex(0);
+        setSearchMessage('');
+    };
+
+    const currentSearchNodeId = searchResults.length > 0 ? searchResults[searchIndex] : null;
+
     if (!data) {
         return <div className="graph-panel-empty">Данные графа не загружены</div>;
     }
@@ -147,7 +208,17 @@ const ComparePanel = ({ data }) => {
         <>
             <CompareNavbar onSectionChange={handleSectionChange} />
             <div className="graph-panel">
-                <CompareAside />
+                <CompareAside
+                    onSearch={handleSearch}
+                    onSearchClear={handleSearchClear}
+                    onSearchPrev={() => handleSearchNavigate('prev')}
+                    onSearchNext={() => handleSearchNavigate('next')}
+                    hasSearchResults={searchResults.length > 0}
+                    hasMultipleSearchResults={searchResults.length > 1}
+                    searchResultIndex={searchResults.length > 0 ? searchIndex : 0}
+                    searchResultCount={searchResults.length}
+                    searchMessage={searchMessage}
+                />
                 {activeSection === 'report' ? (
                     <div className="report-view">
                         <article className="report-document">
@@ -166,7 +237,7 @@ const ComparePanel = ({ data }) => {
                         </article>
                     </div>
                 ) : (
-                    <CompareField nodes={nodes} edges={edges} />
+                    <CompareField nodes={nodes} edges={edges} searchResults={searchResults} currentSearchNodeId={currentSearchNodeId} />
                 )}
             </div>
         </>

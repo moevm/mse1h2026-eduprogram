@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom';
+import { logout as authLogout } from '../services/api/auth';
 
 export const useLogout = () => {
   const navigate = useNavigate();
 
   const logout = () => {
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userLogin');
+    authLogout();
     localStorage.removeItem('compareData');
     navigate('/login');
   };

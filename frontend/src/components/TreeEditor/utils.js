@@ -1,4 +1,6 @@
 
+import { fetchWithAuth } from '../../services/api/httpClient';
+
 export const generateId = () => Date.now() + '-' + Math.random().toString(36).substr(2, 9);
 
 export const getChildType = (parentType) => {
@@ -54,22 +56,14 @@ const domain = process.env.REACT_APP_API_URL_ADD_PROGRAM || process.env.REACT_AP
 const API_BASE_URL = domain.startsWith('http') ? domain : `http://${domain}`;
 
 export const submitProgram = async (programName, disciplines) => {
-  const userId = Number(localStorage.getItem('userId'));
-  const data = {
-    ...convertToBackendFormat(programName, disciplines),
-    idUser: userId,
-  };
+  const data = convertToBackendFormat(programName, disciplines);
 
   if (!programName || !programName.trim()) {
     return { success: false, error: 'Укажите название образовательной программы' };
   }
 
-  if (!Number.isInteger(userId) || userId <= 0) {
-    return { success: false, error: 'Пользователь не авторизован. Войдите заново.' };
-  }
-
   try {
-    const res = await fetch(`${API_BASE_URL}/add-program`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/add-program`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)

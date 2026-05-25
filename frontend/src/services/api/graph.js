@@ -1,3 +1,5 @@
+import { fetchWithAuth } from './httpClient';
+
 const domain = process.env.REACT_APP_API_URL || 'localhost:8000';
 const API_BASE_URL = domain.startsWith('http') ? domain : `http://${domain}`;
 
@@ -134,7 +136,6 @@ const buildGraphDataFromProgram = (programJson) => {
 
 export const fetchGraphData = async (userId, programFolder, universityName) => {
   const params = new URLSearchParams({
-    userId: String(userId),
     pathToProgramFolder: programFolder,
   });
 
@@ -142,7 +143,7 @@ export const fetchGraphData = async (userId, programFolder, universityName) => {
     params.set('universityName', universityName);
   }
 
-  const response = await fetch(`${API_BASE_URL}/show-graph?${params.toString()}`);
+  const response = await fetchWithAuth(`${API_BASE_URL}/show-graph?${params.toString()}`);
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
   }

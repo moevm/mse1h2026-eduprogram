@@ -14,6 +14,8 @@ const GraphField = forwardRef(({
                                    expandedNodes = new Set(),
                                    childrenMap = {},
                                    nodeTypeMap = {},
+                                   searchResults = [],
+                                   currentSearchNodeId = null,
                                    onToggleExpand,
                                    onToggleNodeSelection,
                                    onSelectionChange
@@ -33,6 +35,7 @@ const GraphField = forwardRef(({
     const nodeTypeMapRef = useRef(nodeTypeMap);
     const bridgePairsRef = useRef(bridgePairs);
     const viewModeRef = useRef(viewMode);
+    const pendingSearchNodeIdRef = useRef(null);
 
     useEffect(() => { selectedNodeIdsRef.current = selectedNodeIds; }, [selectedNodeIds]);
     useEffect(() => { onToggleNodeSelectionRef.current = onToggleNodeSelection; }, [onToggleNodeSelection]);
@@ -167,7 +170,7 @@ const GraphField = forwardRef(({
                 }
             });
 
-            cy.nodes().removeClass('highlighted expanded');
+            cy.nodes().removeClass('highlighted expanded search-result search-match');
             cy.nodes().unselect();
         });
     }, [normalizeBridgePairs]);
@@ -204,7 +207,7 @@ const GraphField = forwardRef(({
                     }
                 });
 
-                cy.nodes().removeClass('highlighted expanded');
+                cy.nodes().removeClass('highlighted expanded search-result search-match');
                 cy.nodes().unselect();
 
                 selected.forEach((nodeId) => {
@@ -256,6 +259,22 @@ const GraphField = forwardRef(({
                         duration: 200,
                         easing: 'ease-in-out'
                     });
+                }
+
+                if (pendingSearchNodeIdRef.current) {
+                    const pendingSearchNodeId = pendingSearchNodeIdRef.current;
+                    pendingSearchNodeIdRef.current = null;
+                    const searchNode = cy.getElementById(pendingSearchNodeId);
+
+                    if (searchNode.nonempty() && searchNode.style('display') === 'element') {
+                        cy.nodes().removeClass('search-result');
+                        searchNode.addClass('search-result');
+                        cy.animate({
+                            fit: { eles: searchNode, padding: 120 },
+                            duration: 350,
+                            easing: 'ease-in-out'
+                        });
+                    }
                 }
             }
             // Если за время layout-а пришёл ещё один запрос — применяем его
@@ -499,6 +518,26 @@ const GraphField = forwardRef(({
                         }
                     },
                     {
+                        selector: 'node.search-match',
+                        style: {
+                            'border-color': '#1976d2',
+                            'border-width': 4,
+                            'overlay-color': '#1976d2',
+                            'overlay-opacity': 0.08,
+                            'z-index': 998
+                        }
+                    },
+                    {
+                        selector: 'node.search-result',
+                        style: {
+                            'border-color': '#d32f2f',
+                            'border-width': 6,
+                            'overlay-color': '#d32f2f',
+                            'overlay-opacity': 0.1,
+                            'z-index': 1000
+                        }
+                    },
+                    {
                         selector: 'edge[edgeType = "discipline"]',
                         style: {
                             'width': 2.5,
@@ -676,6 +715,49 @@ const GraphField = forwardRef(({
         applyVisibility(cyRef.current, expandedNodes, selectedNodeIds, hiddenNodeIds, false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedNodeIds, hiddenNodeIds]);
+
+    useEffect(() => {
+        if (!cyRef.current || cyRef.current.destroyed()) return;
+
+        const cy = cyRef.current;
+
+        if (!searchResults.length) {
+            cy.nodes().removeClass('search-result search-match');
+            pendingSearchNodeIdRef.current = null;
+            return;
+        }
+
+        const applySearchFocus = () => {
+            cy.nodes().removeClass('search-result search-match');
+
+            searchResults.forEach((nodeId) => {
+                const node = cy.getElementById(nodeId);
+                if (node.nonempty() && node.style('display') === 'element') {
+                    node.addClass('search-match');
+                }
+            });
+
+            if (!currentSearchNodeId) return;
+
+            const searchNode = cy.getElementById(currentSearchNodeId);
+            if (!searchNode.nonempty() || searchNode.style('display') !== 'element') return;
+
+            searchNode.removeClass('search-match');
+            searchNode.addClass('search-result');
+            cy.animate({
+                fit: { eles: searchNode, padding: 120 },
+                duration: 350,
+                easing: 'ease-in-out'
+            });
+        };
+
+        if (layoutRunningRef.current) {
+            pendingSearchNodeIdRef.current = currentSearchNodeId;
+            return;
+        }
+
+        requestAnimationFrame(applySearchFocus);
+    }, [searchResults, currentSearchNodeId]);
 
     return (
         <div className="graph-field-shell">

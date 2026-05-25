@@ -6,7 +6,7 @@ import Input from '../UI/Input/Input';
 import Card from '../UI/Card/Card';
 import './LoginForm.css';
 
-import { login } from '../../services/api/auth';
+import { login, setTokens } from '../../services/api/auth';
 
 
 function LoginForm() {
@@ -26,8 +26,8 @@ function LoginForm() {
     const result = await login(email, password);
     
     if (result.success) {
-      if (result.id) {
-        localStorage.setItem('userId', String(result.id));
+      if (result.access_token && result.refresh_token) {
+        setTokens(result.access_token, result.refresh_token);
       }
       localStorage.setItem('userLogin', email);
       navigate('/main');

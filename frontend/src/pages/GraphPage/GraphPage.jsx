@@ -123,17 +123,10 @@ const GraphPage = () => {
     };
 
     useEffect(() => {
-        const loadGraphData = async () => {
-            const userId = Number(localStorage.getItem('userId'));
+    const loadGraphData = async () => {
             const params = new URLSearchParams(location.search);
             const folder = params.get('folder');
             const university = params.get('university');
-
-            if (!Number.isInteger(userId) || userId <= 0) {
-                setError('Пользователь не авторизован. Войдите заново.');
-                setLoading(false);
-                return;
-            }
 
             if (!folder) {
                 setError('Программа не выбрана. Откройте список программ на главной странице.');
@@ -145,7 +138,7 @@ const GraphPage = () => {
             setBridgePairs([]);
 
             try {
-                const data = await fetchGraphData(userId, folder, university || undefined);
+                const data = await fetchGraphData(null, folder, university || undefined);
                 setGraphData(data);
                 setError('');
             } catch (err) {

@@ -5,7 +5,7 @@ import './CompareField.css'
 
 cytoscape.use(dagre);
 
-const CompareField = ({ nodes, edges }) => {
+const CompareField = ({ nodes, edges, searchResults = [], currentSearchNodeId = null }) => {
     const cyRef = useRef(null);
 
     useEffect(() => {
@@ -44,6 +44,26 @@ const CompareField = ({ nodes, edges }) => {
                         'target-arrow-shape': 'triangle',
                         'curve-style': 'bezier'
                     }
+                },
+                {
+                    selector: 'node.search-match',
+                    style: {
+                        'border-color': '#1976d2',
+                        'border-width': 4,
+                        'overlay-color': '#1976d2',
+                        'overlay-opacity': 0.08,
+                        'z-index': 998
+                    }
+                },
+                {
+                    selector: 'node.search-result',
+                    style: {
+                        'border-color': '#d32f2f',
+                        'border-width': 6,
+                        'overlay-color': '#d32f2f',
+                        'overlay-opacity': 0.1,
+                        'z-index': 1000
+                    }
                 }
             ],
 
@@ -56,11 +76,48 @@ const CompareField = ({ nodes, edges }) => {
             }
         });
 
+        cyRef.current = cy;
+
         return () => {
             cy.destroy();
+            cyRef.current = null;
         };
 
     }, [nodes, edges]);
+
+    useEffect(() => {
+        if (!cyRef.current) return;
+
+        const cy = cyRef.current;
+
+        if (!searchResults.length) {
+            cy.nodes().removeClass('search-result search-match');
+            return;
+        }
+
+        cy.nodes().removeClass('search-result search-match');
+
+        searchResults.forEach((nodeId) => {
+            const node = cy.getElementById(nodeId);
+            if (node.nonempty()) {
+                node.addClass('search-match');
+            }
+        });
+
+        if (!currentSearchNodeId) return;
+
+        const searchNode = cy.getElementById(currentSearchNodeId);
+
+        if (!searchNode.nonempty()) return;
+
+        searchNode.removeClass('search-match');
+        searchNode.addClass('search-result');
+        cy.animate({
+            fit: { eles: searchNode, padding: 120 },
+            duration: 350,
+            easing: 'ease-in-out'
+        });
+    }, [searchResults, currentSearchNodeId, nodes, edges]);
 
     return (
         <div>
