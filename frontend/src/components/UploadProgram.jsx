@@ -76,6 +76,7 @@ export default function UploadProgram({ isOpen, onClose }) {
   const [programName, setProgramName] = useState("");
   const isProgramNameValid = programName.trim().length > 0;
   const [programTouched, setProgramTouched] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Загрузка сохраненных файлов и университета
   useEffect(() => {
@@ -179,6 +180,7 @@ export default function UploadProgram({ isOpen, onClose }) {
 
   // Закрытие окна — сбрасываем файлы
   const handleClose = () => {
+    if (isSubmitting) return;
     clearFiles();
     onClose();
   };
@@ -206,6 +208,8 @@ export default function UploadProgram({ isOpen, onClose }) {
     formData.append("program_name", programName.trim());
 
     try {
+      if (isSubmitting) return;
+      setIsSubmitting(true);
       const response = await fetchWithAuth(
         `http://${domain}/add-program-from-files`,
         {
@@ -216,23 +220,32 @@ export default function UploadProgram({ isOpen, onClose }) {
       if (response.ok) {
         notify("Программа успешно загружена", { type: 'success' });
         handleClose();
-      }
-      else notify("Ошибка при отправке", { type: 'error' });
+      } else notify("Ошибка при отправке", { type: 'error' });
     } catch (error) {
       console.error("Ошибка:", error);
       notify("Ошибка при отправке", { type: 'error' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={handleClose}
+      onClose={isSubmitting ? undefined : handleClose}
       title="Загрузка рабочей программы"
-      showClose
+      showClose={!isSubmitting}
       size="small"
     >
-      <div className="upload-program-body">
+      <div className="upload-program-body-wrap">
+        {isSubmitting ? (
+          <div className="upload-modal-loading" aria-live="polite" aria-busy="true">
+            <div className="upload-modal-loading__spinner" />
+            <p className="upload-modal-loading__text">Загрузка программы...</p>
+          </div>
+        ) : null}
+
+        <div className="upload-program-body">
         <div className="program-name-wrapper">
           <Input
             type="text"
@@ -254,6 +267,7 @@ export default function UploadProgram({ isOpen, onClose }) {
           value={university}
           onChange={(e) => setUniversity(e.target.value)}
           className="select"
+          disabled={isSubmitting}
         >
           <option value="">Выберите университет</option>
           {arrayUniversities.map((uni) => (
@@ -266,9 +280,9 @@ export default function UploadProgram({ isOpen, onClose }) {
         {/* Drag & Drop */}
         <div
           className="dropZone"
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onClick={() => inputRef.current.click()}
+          onDrop={(e) => { if (!isSubmitting) { handleDrop(e); } }}
+          onDragOver={(e) => { if (!isSubmitting) { handleDragOver(e); } }}
+          onClick={() => { if (!isSubmitting) inputRef.current.click(); }}
         >
           Перетащите файлы или нажмите для выбора
         </div>
@@ -278,7 +292,7 @@ export default function UploadProgram({ isOpen, onClose }) {
           multiple
           ref={inputRef}
           style={{ display: "none" }}
-          onChange={handleFileSelect}
+          onChange={(e) => { if (!isSubmitting) handleFileSelect(e); }}
         />
 
         {files.length > 0 && (
@@ -288,22 +302,22 @@ export default function UploadProgram({ isOpen, onClose }) {
                 <span className="fileName" title={file.name}>
                   {file.name}
                 </span>
-                <button onClick={() => removeFile(index)}>X</button>
+                <button onClick={() => { if (!isSubmitting) removeFile(index); }} disabled={isSubmitting} className="removeBtn">X</button>
               </li>
             ))}
           </ul>
         )}
-
         <div className="upload-actions">
           <Button
             onClick={clearFiles}
-            disabled={files.length === 0}
+            disabled={files.length === 0 || isSubmitting}
           >
             Очистить файлы
           </Button>
-          <Button onClick={handleSubmit} disabled={!isProgramNameValid}>
-            Отправить
+          <Button onClick={handleSubmit} disabled={!isProgramNameValid || isSubmitting}>
+            {isSubmitting ? 'Загрузка...' : 'Отправить'}
           </Button>
+        </div>
         </div>
       </div>
     </Modal>
