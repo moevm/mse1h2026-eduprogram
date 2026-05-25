@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+
 import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import './CompareField.css'
@@ -22,14 +23,16 @@ const normalizeBridgePairs = (pairs) => {
 };
 
 const CompareField = ({ nodes, edges, viewMode = 'graph', bridgePairs = [], searchResults = [], currentSearchNodeId = null }) => {
+    const containerRef = useRef(null);
     const cyRef = useRef(null);
     const isBridges = viewMode === 'bridges';
 
     useEffect(() => {
         if (!nodes || !edges) return;
+        if (!containerRef.current) return;
 
         const cy = cytoscape({
-            container: cyRef.current,
+            container: containerRef.current,
 
             elements: [...nodes, ...edges],
 
@@ -211,7 +214,7 @@ const CompareField = ({ nodes, edges, viewMode = 'graph', bridgePairs = [], sear
     return (
         <div>
             <div className="graph-field-shell">
-                <div ref={cyRef} className="graph-field" />
+                <div ref={containerRef} className="graph-field" />
             </div>
             {!isBridges && (
                 <div className="thermometr">
