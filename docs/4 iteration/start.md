@@ -43,8 +43,10 @@ GIGACHAT_QUERY_URL=https://gigachat.devices.sberbank.ru/api/v1/chat/completions
 GIGACHAT_CLIEND_ID=id клиента после регистрации в гигачате
 GIGACHAT_SCOPE=GIGACHAT_API_PERS
 GIGACHAT_AUTHORIZATION_KEY=ключ авторизации после регистрации в гигачате
-GIGACHAT_AUTH_CERT_PATH=путь до сертификата авторизации
-GIGACHAT_QUERY_CERT_PATH=путь до сертификата запросов
+LEFT_LIMIT=0.4
+RIGHT_LIMIT=0.6
+USE_LLM=1
+JWT_SECRET_KEY=4938hf39qpty812hfp93tg71pfgh1
 ```
 
 Если `.env` не задан, `docker-compose.yml` использует безопасные значения по умолчанию.
